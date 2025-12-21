@@ -1,0 +1,91 @@
+﻿{
+  "ux_score": 78,
+  "score_breakdown": {
+    "Visual Hierarchy": 74,
+    "CTA & Conversion": 70,
+    "Copy Clarity": 82,
+    "Layout & Spacing": 76,
+    "Accessibility": 68
+  },
+  "summary": {
+    "top_3_priorities": [
+      "Perjelas fokus hero dengan kontras dan headline yang lebih singkat.",
+      "Perkuat CTA utama agar terlihat dominan di atas fold.",
+      "Rapikan jarak antar section untuk alur scroll yang lebih lega."
+    ],
+    "overall_notes": "Tampilan sudah rapi dan modern, namun CTA utama masih kalah oleh elemen pendukung. Fokus visual di bagian hero bisa dibuat lebih tajam agar pengguna segera tahu aksi utama yang diinginkan."
+  },
+  "issues": [
+    {
+      "severity": "High",
+      "category": "CTA & Conversion",
+      "title": "CTA utama kurang menonjol",
+      "problem": "Tombol utama memiliki ukuran dan warna yang mirip dengan tombol sekunder sehingga tidak langsung terlihat sebagai aksi utama.",
+      "evidence": "Di area hero terlihat dua tombol dengan warna yang sama-sama pastel sehingga fokus pengguna terpecah.",
+      "recommendation_steps": [
+        "Gunakan warna kontras untuk tombol utama.",
+        "Perbesar ukuran tombol utama 10-15%.",
+        "Kurangi visual noise di sekitar CTA."
+      ],
+      "expected_impact": "Meningkatkan klik CTA utama dan memperjelas jalur konversi."
+    },
+    {
+      "severity": "Medium",
+      "category": "Visual Hierarchy",
+      "title": "Headline terlalu panjang",
+      "problem": "Headline utama lebih dari dua baris dan sulit dipindai cepat.",
+      "evidence": "Pada hero, headline memanjang hingga tiga baris sehingga menurunkan fokus pengguna.",
+      "recommendation_steps": [
+        "Ringkas headline menjadi 6-10 kata.",
+        "Gunakan highlight pada kata kunci utama."
+      ],
+      "expected_impact": "Mempercepat pemahaman value proposition dalam 3 detik pertama."
+    },
+    {
+      "severity": "Medium",
+      "category": "Layout & Spacing",
+      "title": "Jarak antar section terlalu rapat",
+      "problem": "Konten terlihat padat sehingga alur scroll terasa berat.",
+      "evidence": "Section fitur dan testimoni berada terlalu dekat tanpa ruang napas.",
+      "recommendation_steps": [
+        "Tambahkan padding vertikal 24-32px antar section.",
+        "Gunakan divider halus untuk memisahkan blok besar."
+      ],
+      "expected_impact": "Meningkatkan keterbacaan dan kenyamanan saat scroll."
+    },
+    {
+      "severity": "Low",
+      "category": "Accessibility",
+      "title": "Kontras teks kecil kurang",
+      "problem": "Teks keterangan berwarna abu muda pada latar terang kurang terbaca.",
+      "evidence": "Label di bawah gambar menggunakan abu-abu muda di atas latar putih.",
+      "recommendation_steps": [
+        "Naikkan kontras warna teks kecil.",
+        "Pastikan rasio kontras minimal 4.5:1."
+      ],
+      "expected_impact": "Membantu keterbacaan untuk semua pengguna termasuk low vision."
+    }
+  ],
+  "quick_wins": [
+    {
+      "title": "Tampilkan CTA tunggal",
+      "action": "Sembunyikan tombol sekunder di hero dan pindahkan ke section bawah.",
+      "expected_impact": "Mengurangi distraksi dan memperjelas fokus aksi."
+    },
+    {
+      "title": "Perkuat subheadline",
+      "action": "Ubah subheadline menjadi satu kalimat benefit yang jelas.",
+      "expected_impact": "Meningkatkan pemahaman nilai produk secara cepat."
+    },
+    {
+      "title": "Tambah ruang pada hero",
+      "action": "Perbesar padding atas/bawah hero sebesar 20px.",
+      "expected_impact": "Membuat tampilan terasa lebih premium dan terstruktur."
+    }
+  ],
+  "next_steps": [
+    "Uji dua variasi warna CTA utama dan ukur CTR.",
+    "Siapkan A/B test untuk headline baru.",
+    "Audit kontras warna dengan tool aksesibilitas."
+  ]
+}
