@@ -46,7 +46,7 @@ Copy `.env.example` -> `.env.local` and fill:
 ## Local Run
 Windows (PowerShell):
 ```powershell
-cd "d:\Kelompok Belajar\MVP"
+cd "c:\users\uxray-audit"
 npm install
 Copy-Item .env.example .env.local
 npm run dev
@@ -54,7 +54,7 @@ npm run dev
 
 Mac/Linux (bash):
 ```bash
-cd "/path/to/Kelompok Belajar/MVP"
+cd "/path/to/users/uxray-audit"
 npm install
 cp .env.example .env.local
 npm run dev
