@@ -38,6 +38,7 @@ const isEdgeRuntime = () =>
 const getRuntimeLabel = () => (isEdgeRuntime() ? 'edge' : 'nodejs');
 
 const getPlatformLabel = () => (process.env.VERCEL ? 'vercel' : 'local');
+const isVercel = () => Boolean(process.env.VERCEL);
 
 const getStrategyOverride = () => serverEnv.auditStrategy ?? 'auto';
 
@@ -61,11 +62,9 @@ export async function runUrlAudit(
 ): Promise<EngineResponse> {
   const runtime = getRuntimeLabel();
   const platform = getPlatformLabel();
-  const strategyOverride = getStrategyOverride();
   const hasWorker = Boolean(serverEnv.auditWorkerUrl);
 
   const logBase = `[AuditEngine] [${correlationId}] runtime=${runtime} platform=${platform}`;
-  console.info(`${logBase} strategy=${strategyOverride}`);
 
   const tryWorker = async (): Promise<EngineResponse> => {
     const workerPayload = {
@@ -110,6 +109,26 @@ export async function runUrlAudit(
     };
   };
 
+  if (isVercel()) {
+    if (hasWorker) {
+      console.info(`${logBase} strategy=worker (vercel)`);
+      return tryWorker();
+    }
+    console.warn(`${logBase} worker_unset on vercel`);
+    return {
+      response: withAuditMeta(
+        correlationId,
+        'AUDIT_WORKER_UNSET',
+        'AUDIT_WORKER_URL belum diset. Audit harus memakai remote worker di Vercel.'
+      ),
+      httpStatus: 503,
+      meta: { correlationId, strategy: 'worker', runtime, platform }
+    };
+  }
+
+  const strategyOverride = getStrategyOverride();
+  console.info(`${logBase} strategy=${strategyOverride}`);
+
   if (strategyOverride === 'worker') {
     if (!hasWorker) {
       return {
@@ -151,8 +170,9 @@ export async function runUrlAudit(
       };
     } catch (error) {
       if (isChromiumUnavailableError(error)) {
+        console.warn(`${logBase} chromium_unavailable code=${error.code}`);
         return {
-          response: withAuditMeta(correlationId, error.code, error.message),
+          response: withAuditMeta(correlationId, 'CHROMIUM_UNAVAILABLE', error.message),
           httpStatus: 503,
           meta: { correlationId, strategy: 'chromium', runtime, platform }
         };
@@ -195,10 +215,11 @@ export async function runUrlAudit(
         console.warn(`${logBase} chromium_unavailable -> fallback to worker`);
         return tryWorker();
       }
+      console.warn(`${logBase} chromium_unavailable code=${(error as ChromiumUnavailableError).code}`);
       return {
         response: withAuditMeta(
           correlationId,
-          (error as ChromiumUnavailableError).code ?? 'AUDIT_CHROMIUM_ASSETS_MISSING',
+          'CHROMIUM_UNAVAILABLE',
           (error as Error).message ??
             'Audit headless browser tidak tersedia di runtime ini. Set AUDIT_WORKER_URL.'
         ),
