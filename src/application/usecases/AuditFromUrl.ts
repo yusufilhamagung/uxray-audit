@@ -2,7 +2,7 @@ import { IAuditAnalyzer } from '@/application/ports/IAuditAnalyzer';
 import { IAuditRepository } from '@/application/ports/IAuditRepository';
 import { IFileStorage } from '@/application/ports/IFileStorage';
 import { ICaptureService } from '@/application/ports/ICaptureService';
-import { PageTypeEnum } from '@/shared/validation/schema';
+import { AuditResultSchema, PageTypeEnum } from '@/shared/validation/schema';
 import { randomUUID } from 'node:crypto';
 
 export class AuditFromUrl {
@@ -54,13 +54,18 @@ export class AuditFromUrl {
     });
     const latencyMs = Date.now() - start;
 
+    const parsedResult = AuditResultSchema.safeParse(result);
+    if (!parsedResult.success) {
+      throw new Error('Hasil audit tidak valid.');
+    }
+
     // 4. Save
     const saved = await this.repository.save({
       id: auditId,
       page_type: pageTypeParsed.data,
       image_url: imageUrl,
       ux_score: result.ux_score,
-      result_json: result,
+      result_json: parsedResult.data,
       model_used: modelUsed,
       latency_ms: latencyMs
     });

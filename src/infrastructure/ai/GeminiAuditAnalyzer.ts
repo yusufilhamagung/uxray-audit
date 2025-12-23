@@ -2,6 +2,7 @@ import { IAuditAnalyzer } from '@/application/ports/IAuditAnalyzer';
 import { AuditResult, PageType } from '@/shared/validation/schema';
 import { AuditResultSchema } from '@/shared/validation/schema';
 import { extractJsonBlock, safeJsonParse } from '@/shared/utils/json';
+import { serverEnv } from '@/lib/env/server';
 
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const TIMEOUT_MS = 60000;
@@ -63,22 +64,20 @@ export class GeminiAuditAnalyzer implements IAuditAnalyzer {
     pageType: string;
     optionalContext?: string;
   }): Promise<{ result: AuditResult; modelUsed: string }> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const modelName = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
-    
+    const apiKey = serverEnv.aiApiKey;
+    const modelName = serverEnv.aiModel || DEFAULT_GEMINI_MODEL;
+    const baseUrl = serverEnv.aiApiUrl;
+
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is missing via environment variables.');
     }
 
-    const baseUrl = process.env.GEMINI_URL;
     const apiUrl = `${baseUrl}/${modelName}:generateContent?key=${apiKey}`;
 
     try {
       const prompt = buildPrompt(input.pageType as PageType, input.optionalContext);
       
       const parts: any[] = [{ text: prompt }];
-
-      console.log(parts);
 
       if (input.imageBase64) {
           parts.push({

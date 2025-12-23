@@ -1,17 +1,16 @@
-import puppeteer from 'puppeteer';
 import { ICaptureService } from '@/application/ports/ICaptureService';
+import { launchBrowser } from '@/lib/puppeteer';
 
 export class PuppeteerCaptureService implements ICaptureService {
   async capture(url: string): Promise<Buffer> {
-    const browser = await puppeteer.launch({
-      headless: true, // New headless mode
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
-    });
+    let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
+    try {
+      // Use shared launcher to support server/CI environments.
+      browser = await launchBrowser();
+    } catch (error) {
+      console.error('Failed to launch Chromium for capture.', error);
+      throw error;
+    }
 
     try {
       const page = await browser.newPage();
@@ -33,7 +32,9 @@ export class PuppeteerCaptureService implements ICaptureService {
 
       return buffer as Buffer;
     } finally {
-      await browser.close();
+      if (browser) {
+        await browser.close();
+      }
     }
   }
 }
