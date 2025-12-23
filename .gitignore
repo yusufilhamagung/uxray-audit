@@ -4,6 +4,7 @@ out/
 .next/cache/
 tests/
 supabase/
+docs/
 
 *.log
 npm-debug.log*

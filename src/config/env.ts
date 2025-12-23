@@ -26,6 +26,9 @@ export const envKeys = {
     'AI_API_URL',
     'AI_MODEL',
     'AI_MOCK_MODE',
-    'PUPPETEER_EXECUTABLE_PATH'
+    'PUPPETEER_EXECUTABLE_PATH',
+    'CHROME_EXECUTABLE_PATH',
+    'AUDIT_WORKER_URL',
+    'AUDIT_STRATEGY'
   ]
 };

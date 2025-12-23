@@ -17,7 +17,7 @@ export function renderHtmlReport(params: {
   modelUsed: string;
   createdAt: string;
 }) {
-  const { result, id, pageType, imageUrl, modelUsed, createdAt } = params;
+  const { result, id, pageType, imageUrl, createdAt } = params;
 
   const priorities = result.summary.top_3_priorities
     .map((item) => `<li>${escapeHtml(item)}</li>`)
@@ -125,7 +125,6 @@ export function renderHtmlReport(params: {
       <ul>${priorities}</ul>
       <p>${escapeHtml(result.summary.overall_notes)}</p>
       <div class="image">Screenshot: ${escapeHtml(imageUrl)}</div>
-      <div class="image">Model: ${escapeHtml(modelUsed)}</div>
     </div>
 
     <div class="scores">

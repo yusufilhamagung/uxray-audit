@@ -53,6 +53,31 @@ type LockedReportSectionProps = {
   auditId: string | null;
 };
 
+const MODEL_LATENCY_LINE = /^Model:\s.*-\sLatency:\s\d+\sms$/i;
+
+const stripModelLatencyLine = (value: string) => {
+  const lines = value.split('\n');
+  const filtered = lines.filter((line) => !MODEL_LATENCY_LINE.test(line.trim()));
+  return filtered.join('\n');
+};
+
+const sanitizeValue = (value: unknown): unknown => {
+  if (typeof value === 'string') {
+    return stripModelLatencyLine(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, sanitizeValue(entry)])
+    );
+  }
+  return value;
+};
+
+const sanitizeAuditResult = (value: AuditResult): AuditResult => sanitizeValue(value) as AuditResult;
+
 const LockedReportSection = memo(function LockedReportSection({ result, auditId }: LockedReportSectionProps) {
   const teaserIssues = useMemo(() => result.issues.slice(0, 2), [result.issues]);
   const teaserQuickWins = useMemo(() => result.quick_wins.slice(0, 1), [result.quick_wins]);
@@ -171,6 +196,12 @@ export default function AuditPageClient() {
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    (window as Window & { __uxauditMeta__?: { modelUsed: string | null; latencyMs: number | null } })
+      .__uxauditMeta__ = { modelUsed, latencyMs };
+  }, [modelUsed, latencyMs]);
+
+  useEffect(() => {
     const urlParam = searchParams.get('url');
     if (urlParam) {
       setUrl(urlParam);
@@ -190,7 +221,7 @@ export default function AuditPageClient() {
         })
         .then((payload) => {
           if (!payload.data) throw new Error('Audit data missing.');
-          setResult(payload.data.result);
+          setResult(sanitizeAuditResult(payload.data.result));
           setAuditId(payload.data.id);
           setModelUsed(payload.data.model_used);
           setLatencyMs(payload.data.latency_ms);
@@ -283,7 +314,7 @@ export default function AuditPageClient() {
         throw new Error('Data audit tidak tersedia.');
       }
 
-      setResult(payload.data.result);
+      setResult(sanitizeAuditResult(payload.data.result));
       setAuditId(payload.data.audit_id);
       setModelUsed(payload.data.model_used);
       setLatencyMs(payload.data.latency_ms);
@@ -470,9 +501,6 @@ export default function AuditPageClient() {
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UX Score</p>
                 <div className="text-5xl font-semibold text-foreground">{result.ux_score}</div>
-                <p className="text-sm text-muted-foreground">
-                  Model: {modelUsed ?? 'unknown'} - Latency: {latencyMs ?? 0} ms
-                </p>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={handleDownloadJson} className="btn-secondary">
                     Download Report (JSON)

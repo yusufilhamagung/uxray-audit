@@ -16,7 +16,10 @@ const serverEnvSchema = z.object({
   AI_API_URL: z.string().url().optional(),
   AI_MODEL: z.string().min(1).optional(),
   AI_MOCK_MODE: z.enum(['true', 'false']).optional(),
-  PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional()
+  PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
+  CHROME_EXECUTABLE_PATH: z.string().min(1).optional(),
+  AUDIT_WORKER_URL: z.string().url().optional(),
+  AUDIT_STRATEGY: z.enum(['auto', 'chromium', 'worker']).optional()
 });
 
 const parsed = serverEnvSchema.safeParse(process.env);
@@ -61,7 +64,10 @@ export const serverEnv = {
   aiModel: raw.GEMINI_MODEL ?? raw.AI_MODEL ?? 'gemini-2.5-flash',
   aiMockMode,
   isSupabaseConfigured: Boolean(supabaseUrl && supabaseServiceRoleKey),
-  puppeteerExecutablePath: raw.PUPPETEER_EXECUTABLE_PATH
+  puppeteerExecutablePath: raw.PUPPETEER_EXECUTABLE_PATH,
+  chromeExecutablePath: raw.CHROME_EXECUTABLE_PATH,
+  auditWorkerUrl: raw.AUDIT_WORKER_URL,
+  auditStrategy: raw.AUDIT_STRATEGY ?? 'auto'
 };
 
 export type ServerEnv = typeof serverEnv;

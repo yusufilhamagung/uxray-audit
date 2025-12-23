@@ -1,4 +1,4 @@
-import { launchBrowser } from '@/lib/puppeteer';
+import { launchBrowser } from '@/server/audit/chromium';
 
 async function run() {
   console.log('Launching Chromium...');

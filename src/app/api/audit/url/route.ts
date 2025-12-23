@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { checkRateLimit } from '@/shared/utils/rate-limit';
-import { auditFromUrl } from '../composition';
 import { jsonResponse } from '@/lib/api/response';
 import { getRequestIp } from '@/lib/api/request';
 import { PageTypeEnum } from '@/shared/validation/schema';
+import { runUrlAudit } from '@/server/audit/engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,28 +35,15 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const result = await auditFromUrl.execute({
-      url: parsed.data.url,
-      pageType: parsed.data.page_type,
-      optionalContext: parsed.data.optional_context
-    });
+  const correlationId = request.headers.get('x-correlation-id');
+  const engine = correlationId
+    ? await runUrlAudit(parsed.data, correlationId)
+    : await runUrlAudit(parsed.data);
 
-    return jsonResponse({
-      status: 'success',
-      message: 'Audit berhasil dibuat.',
-      data: {
-        audit_id: result.auditId,
-        result: result.result,
-        image_url: result.imageUrl,
-        model_used: result.modelUsed,
-        latency_ms: result.latencyMs,
-        created_at: result.createdAt
-      }
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'An error occurred during audit.';
-    const status = message.includes('not valid') || message.includes('Format') ? 400 : 500;
-    return jsonResponse({ status: 'error', message }, { status });
-  }
+  return jsonResponse(engine.response, {
+    status: engine.httpStatus,
+    headers: {
+      'x-correlation-id': engine.meta.correlationId
+    }
+  });
 }
