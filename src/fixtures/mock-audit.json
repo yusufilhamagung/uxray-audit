@@ -1,0 +1,40 @@
+﻿{
+  "ux_score": 78,
+  "score_breakdown": {
+    "Visual Hierarchy": 74,
+    "CTA & Conversion": 70,
+    "Copy Clarity": 82,
+    "Layout & Spacing": 76,
+    "Accessibility": 68
+  },
+  "summary": {
+    "top_3_priorities": [
+      "Perjelas fokus hero dengan kontras dan headline yang lebih singkat.",
+      "Perkuat CTA utama agar terlihat dominan di atas fold.",
+      "Rapikan jarak antar section untuk alur scroll yang lebih lega."
+    ],
+    "overall_notes": "Tampilan sudah rapi dan modern, namun CTA utama masih kalah oleh elemen pendukung. Fokus visual di bagian hero bisa dibuat lebih tajam agar pengguna segera tahu aksi utama yang diinginkan."
+  },
+  "quick_wins": [
+    {
+      "title": "Tampilkan CTA tunggal",
+      "action": "Sembunyikan tombol sekunder di hero dan pindahkan ke section bawah.",
+      "expected_impact": "Mengurangi distraksi dan memperjelas fokus aksi."
+    },
+    {
+      "title": "Perkuat subheadline",
+      "action": "Ubah subheadline menjadi satu kalimat benefit yang jelas.",
+      "expected_impact": "Meningkatkan pemahaman nilai produk secara cepat."
+    },
+    {
+      "title": "Tambah ruang pada hero",
+      "action": "Perbesar padding atas/bawah hero sebesar 20px.",
+      "expected_impact": "Membuat tampilan terasa lebih premium dan terstruktur."
+    }
+  ],
+  "next_steps": [
+    "Uji dua variasi warna CTA utama dan ukur CTR.",
+    "Siapkan A/B test untuk headline baru.",
+    "Audit kontras warna dengan tool aksesibilitas."
+  ]
+}
