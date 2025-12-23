@@ -1,25 +1,42 @@
-﻿import { AuditResultSchema } from '@/shared/validation/schema';
-import { supabaseServer } from '@/infrastructure/storage/supabaseServer';
+import { z } from 'zod';
+import { AuditResultSchema } from '@/shared/validation/schema';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { jsonResponse } from '@/lib/api/response';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { data, error } = await supabaseServer
+  const idParsed = z.string().uuid().safeParse(params.id);
+  if (!idParsed.success) {
+    return jsonResponse(
+      { status: 'error', message: 'Audit ID tidak valid.' },
+      { status: 400 }
+    );
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
     .from('audits')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', idParsed.data)
     .single();
 
   if (error || !data) {
-    return Response.json({ error: { message: 'Audit tidak ditemukan.' } }, { status: 404 });
+    return jsonResponse(
+      { status: 'error', message: 'Audit tidak ditemukan.' },
+      { status: 404 }
+    );
   }
 
   const resultJson = typeof data.result_json === 'string' ? JSON.parse(data.result_json) : data.result_json;
   const parsed = AuditResultSchema.safeParse(resultJson);
 
   if (!parsed.success) {
-    return Response.json({ error: { message: 'Data audit tersimpan rusak.' } }, { status: 500 });
+    return jsonResponse(
+      { status: 'error', message: 'Data audit tersimpan rusak.' },
+      { status: 500 }
+    );
   }
 
   const payload = {
@@ -42,7 +59,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   if (download) {
     headers.set('Content-Disposition', `attachment; filename="uxaudit-${data.id}.json"`);
+    return new Response(JSON.stringify(payload, null, 2), { headers });
   }
 
-  return new Response(JSON.stringify(payload, null, 2), { headers });
+  return jsonResponse(
+    { status: 'success', message: 'Audit berhasil dimuat.', data: payload },
+    { headers }
+  );
 }

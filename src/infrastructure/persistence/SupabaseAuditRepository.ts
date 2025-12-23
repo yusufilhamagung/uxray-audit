@@ -1,9 +1,10 @@
 import { IAuditRepository, AuditEntity } from '@/application/ports/IAuditRepository';
-import { supabaseServer } from '@/infrastructure/storage/supabaseServer';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export class SupabaseAuditRepository implements IAuditRepository {
   async save(audit: Omit<AuditEntity, 'created_at'>): Promise<AuditEntity> {
-    const { data, error } = await supabaseServer
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
       .from('audits')
       .insert({
         id: audit.id,
@@ -25,7 +26,8 @@ export class SupabaseAuditRepository implements IAuditRepository {
   }
 
   async findById(id: string): Promise<AuditEntity | null> {
-    const { data, error } = await supabaseServer
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
       .from('audits')
       .select('*')
       .eq('id', id)
