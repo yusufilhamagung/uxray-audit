@@ -53,11 +53,13 @@ export default function Hero() {
           <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
             Your website looks <span className="text-orange-500">fine</span>.
             <br />
-            <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">But why isn't it converting?</span>
+            <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">
+              {`But why isn't it converting?`}
+            </span>
           </h1>
           
           <p className="mx-auto max-w-2xl text-lg text-slate-600">
-            Analyze your website's UX instantly. Get actionable insights and clear improvement steps in under 2 minutes. No consultants, no progress bars (actually, maybe some).
+            {`Analyze your website's UX instantly. Get actionable insights and clear improvement steps in under 2 minutes. No consultants, no progress bars (actually, maybe some).`}
           </p>
           
           <div className="flex flex-col items-center gap-4 w-full">

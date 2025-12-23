@@ -7,7 +7,7 @@ export default function Trust() {
               Honesty First
             </h3>
             <p className="text-lg text-slate-700 italic font-medium leading-relaxed">
-              "We don't upsell consulting. We don't take a percentage of your revenue. Just simple, data-driven tools to help you grow. If we can't help, we'll tell you."
+              {`"We don't upsell consulting. We don't take a percentage of your revenue. Just simple, data-driven tools to help you grow. If we can't help, we'll tell you."`}
             </p>
          </div>
       </div>
