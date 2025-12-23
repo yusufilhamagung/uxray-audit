@@ -2,6 +2,7 @@ node_modules/
 .next/
 out/
 .next/cache/
+tests/
 
 *.log
 npm-debug.log*

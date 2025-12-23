@@ -10,9 +10,9 @@ export function getOptionalEnv(name: string, fallback?: string): string | undefi
   return process.env[name] ?? fallback;
 }
 
+// Mock mode disabled in production
 export function isMockMode(): boolean {
-  const flag = process.env.AI_MOCK_MODE;
-  return flag === 'true' || flag === '1';
+  return false;
 }
 
 export function getStorageBucket(): string {
