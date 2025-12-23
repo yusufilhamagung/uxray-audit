@@ -4,6 +4,8 @@ import { auditFromUrl } from '../composition';
 import { jsonResponse } from '@/lib/api/response';
 import { getRequestIp } from '@/lib/api/request';
 import { PageTypeEnum } from '@/shared/validation/schema';
+import { serverEnv } from '@/lib/env/server';
+import { isChromiumUnavailableError } from '@/server/chromium/launch';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +15,29 @@ const auditUrlSchema = z.object({
   page_type: PageTypeEnum,
   optional_context: z.string().max(500).optional()
 });
+
+const isApiResponse = (value: unknown): value is { status: string; message: string; data?: unknown } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'status' in value &&
+  'message' in value &&
+  typeof (value as { status?: unknown }).status === 'string' &&
+  typeof (value as { message?: unknown }).message === 'string';
+
+async function callRemoteWorker(payload: z.infer<typeof auditUrlSchema>) {
+  if (!serverEnv.auditWorkerUrl) {
+    return null;
+  }
+
+  const response = await fetch(serverEnv.auditWorkerUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => null);
+  return { response, data };
+}
 
 export async function POST(request: Request) {
   const ip = getRequestIp();
@@ -55,6 +80,40 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
+    if (isChromiumUnavailableError(error)) {
+      const workerResult = await callRemoteWorker(parsed.data);
+      if (workerResult?.response) {
+        const status = workerResult.response.status;
+        if (isApiResponse(workerResult.data)) {
+          return jsonResponse(workerResult.data, { status });
+        }
+        if (workerResult.data && typeof workerResult.data === 'object') {
+          return jsonResponse(
+            {
+              status: 'success',
+              message: 'Audit berhasil dibuat.',
+              data: workerResult.data
+            },
+            { status }
+          );
+        }
+        return jsonResponse(
+          { status: 'error', message: 'Remote worker tidak mengembalikan data.' },
+          { status: 502 }
+        );
+      }
+
+      return jsonResponse(
+        {
+          status: 'error',
+          message:
+            error.message ||
+            'Audit headless browser tidak tersedia di runtime ini. Set AUDIT_WORKER_URL atau gunakan Node.js runtime.'
+        },
+        { status: 503 }
+      );
+    }
+
     const message = error instanceof Error ? error.message : 'An error occurred during audit.';
     const status = message.includes('not valid') || message.includes('Format') ? 400 : 500;
     return jsonResponse({ status: 'error', message }, { status });

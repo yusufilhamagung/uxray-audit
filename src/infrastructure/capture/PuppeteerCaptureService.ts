@@ -1,5 +1,5 @@
 import { ICaptureService } from '@/application/ports/ICaptureService';
-import { launchBrowser } from '@/lib/puppeteer';
+import { launchBrowser } from '@/server/chromium/launch';
 
 export class PuppeteerCaptureService implements ICaptureService {
   async capture(url: string): Promise<Buffer> {

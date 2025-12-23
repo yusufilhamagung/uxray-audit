@@ -17,6 +17,12 @@ if (supabaseUrl) {
 
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/audit': ['node_modules/@sparticuz/chromium/bin/**'],
+      '/api/audit/url': ['node_modules/@sparticuz/chromium/bin/**']
+    }
+  },
   images: {
     remotePatterns
   }
