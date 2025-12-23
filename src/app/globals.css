@@ -1,0 +1,52 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: #0f172a;
+  --background-start: #fff7ed; /* slightly warmer start */
+  --background-end: #ffffff;
+  --primary: #f97316;
+  --primary-foreground: #ffffff;
+  --accent: #ea580c;
+  --accent-foreground: #ffffff;
+  --muted: #64748b;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --border: #e2e8f0;
+}
+
+body {
+  color: var(--foreground);
+  background: linear-gradient(
+    to bottom,
+    var(--background-start),
+    var(--background-end) transparent
+  );
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition-all hover:bg-orange-600 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-offset-2;
+  }
+
+  .glass-card {
+    @apply rounded-3xl border border-white/20 bg-white/70 backdrop-blur-xl shadow-xl;
+  }
+  
+  .section-container {
+    @apply mx-auto max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
