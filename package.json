@@ -10,7 +10,8 @@
     "validate:mock": "tsx scripts/validate-mock-audit.ts",
     "test:early-access": "tsx scripts/test-early-access.ts",
     "test:puppeteer": "tsx scripts/test-puppeteer.ts",
-    "test:runtime": "node scripts/check-runtime.mjs"
+    "test:runtime": "node scripts/check-runtime.mjs",
+    "test:ux-analysis": "node scripts/smoke-ux-analysis.mjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "^132.0.0",

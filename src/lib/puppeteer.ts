@@ -1,5 +1,6 @@
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import path from 'node:path';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import { serverEnv } from '@/lib/env/server';
@@ -22,7 +23,17 @@ async function resolveExecutablePath() {
     return serverEnv.puppeteerExecutablePath;
   }
 
-  const executablePath = await chromium.executablePath();
+  const bundledBinPath = path.join(
+    process.cwd(),
+    'node_modules',
+    '@sparticuz',
+    'chromium',
+    'bin'
+  );
+
+  // In serverless runtimes, __dirname can resolve to a bundled chunk path (e.g. .next/server/chunks),
+  // so point chromium to the package bin directory explicitly to avoid .next/server/bin lookups.
+  const executablePath = await chromium.executablePath(bundledBinPath);
   if (!executablePath) {
     const message =
       'Chromium executable path could not be resolved. ' +
