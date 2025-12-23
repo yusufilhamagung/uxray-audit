@@ -40,7 +40,7 @@ export default function ProblemSection() {
             Why is your conversion low?
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Analytics tell you "what" is happening, but they don't tell you "why". That's where we come in.
+            {`Analytics tell you "what" is happening, but they don't tell you "why". That's where we come in.`}
           </p>
         </div>
 

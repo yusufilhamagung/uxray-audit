@@ -24,7 +24,7 @@ export default function AnalysisPreview() {
                    We analyze what matters most.
                  </h2>
                  <p className="text-orange-100 text-lg mb-8 max-w-lg">
-                   Our AI doesn't just look for bugs. It evaluates the psychology and visual elements that drive user behavior.
+                   {`Our AI doesn't just look for bugs. It evaluates the psychology and visual elements that drive user behavior.`}
                  </p>
                  
                  <div className="space-y-3">
