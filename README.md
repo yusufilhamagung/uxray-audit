@@ -1,8 +1,7 @@
-# UXAudit AI 🧠
+# UXAudit AI
 > **Turn user friction into conversion.**  
 > *AI-powered UX audits that identify distinct conversion blockers in seconds.*
 
-![UXAudit AI Hero](https://via.placeholder.com/1200x600/f97316/ffffff?text=UXAudit+AI+Dashboard)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](https://opensource.org/licenses/MIT)
 [![Status: Production](https://img.shields.io/badge/Status-Production-success.svg)]()
@@ -205,4 +204,4 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 
 ---
 
-Built with ❤️ by the **UXAudit AI Team**.
+Built with 🚀 by the **UXAudit AI Team**.
