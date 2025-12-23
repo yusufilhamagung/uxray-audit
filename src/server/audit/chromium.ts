@@ -4,10 +4,17 @@ import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import { serverEnv } from '@/lib/env/server';
 
+export type ChromiumFailureCode =
+  | 'AUDIT_EDGE_RUNTIME'
+  | 'AUDIT_CHROMIUM_ASSETS_MISSING'
+  | 'AUDIT_CHROMIUM_NOT_FOUND';
+
 export class ChromiumUnavailableError extends Error {
-  constructor(message: string, cause?: unknown) {
+  code: ChromiumFailureCode;
+  constructor(code: ChromiumFailureCode, message: string, cause?: unknown) {
     super(message);
     this.name = 'ChromiumUnavailableError';
+    this.code = code;
     if (cause) {
       (this as Error & { cause?: unknown }).cause = cause;
     }
@@ -22,15 +29,17 @@ export const isChromiumUnavailableError = (error: unknown): error is ChromiumUna
     (error as { name?: string }).name === 'ChromiumUnavailableError');
 
 const isEdgeRuntime = () =>
-  process.env.NEXT_RUNTIME === 'edge' || typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== 'undefined';
+  process.env.NEXT_RUNTIME === 'edge' ||
+  typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== 'undefined';
 
 async function ensureExecutablePath(executablePath: string) {
   try {
     await access(executablePath, constants.X_OK);
   } catch {
     throw new ChromiumUnavailableError(
+      'AUDIT_CHROMIUM_NOT_FOUND',
       `Chromium executable not found at ${executablePath}. ` +
-        'Set CHROME_EXECUTABLE_PATH or PUPPETEER_EXECUTABLE_PATH, or configure AUDIT_WORKER_URL as a fallback.'
+        'Set CHROME_EXECUTABLE_PATH or PUPPETEER_EXECUTABLE_PATH, or configure AUDIT_WORKER_URL.'
     );
   }
 }
@@ -38,12 +47,12 @@ async function ensureExecutablePath(executablePath: string) {
 async function resolveExecutablePath() {
   if (isEdgeRuntime()) {
     throw new ChromiumUnavailableError(
+      'AUDIT_EDGE_RUNTIME',
       'Chromium cannot run in Edge runtime. Use Node.js runtime or set AUDIT_WORKER_URL.'
     );
   }
 
-  const overridePath =
-    serverEnv.chromeExecutablePath || serverEnv.puppeteerExecutablePath || undefined;
+  const overridePath = serverEnv.chromeExecutablePath || serverEnv.puppeteerExecutablePath;
   if (overridePath) {
     await ensureExecutablePath(overridePath);
     return overridePath;
@@ -53,8 +62,8 @@ async function resolveExecutablePath() {
     const executablePath = await chromium.executablePath();
     if (!executablePath) {
       throw new ChromiumUnavailableError(
-        'Chromium executable path could not be resolved. ' +
-          'Ensure @sparticuz/chromium is bundled in your serverless output or set AUDIT_WORKER_URL.'
+        'AUDIT_CHROMIUM_ASSETS_MISSING',
+        'Chromium executable path could not be resolved. Ensure @sparticuz/chromium is bundled or set AUDIT_WORKER_URL.'
       );
     }
     await ensureExecutablePath(executablePath);
@@ -64,8 +73,8 @@ async function resolveExecutablePath() {
       throw error;
     }
     throw new ChromiumUnavailableError(
-      'Chromium assets are missing from the serverless bundle. ' +
-        'Ensure @sparticuz/chromium bin files are included in output tracing, or set AUDIT_WORKER_URL.',
+      'AUDIT_CHROMIUM_ASSETS_MISSING',
+      'Chromium assets are missing from the serverless bundle. Ensure output tracing includes @sparticuz/chromium/bin or set AUDIT_WORKER_URL.',
       error
     );
   }

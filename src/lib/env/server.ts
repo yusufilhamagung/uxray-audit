@@ -18,7 +18,8 @@ const serverEnvSchema = z.object({
   AI_MOCK_MODE: z.enum(['true', 'false']).optional(),
   PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
   CHROME_EXECUTABLE_PATH: z.string().min(1).optional(),
-  AUDIT_WORKER_URL: z.string().url().optional()
+  AUDIT_WORKER_URL: z.string().url().optional(),
+  AUDIT_STRATEGY: z.enum(['auto', 'chromium', 'worker']).optional()
 });
 
 const parsed = serverEnvSchema.safeParse(process.env);
@@ -65,7 +66,8 @@ export const serverEnv = {
   isSupabaseConfigured: Boolean(supabaseUrl && supabaseServiceRoleKey),
   puppeteerExecutablePath: raw.PUPPETEER_EXECUTABLE_PATH,
   chromeExecutablePath: raw.CHROME_EXECUTABLE_PATH,
-  auditWorkerUrl: raw.AUDIT_WORKER_URL
+  auditWorkerUrl: raw.AUDIT_WORKER_URL,
+  auditStrategy: raw.AUDIT_STRATEGY ?? 'auto'
 };
 
 export type ServerEnv = typeof serverEnv;

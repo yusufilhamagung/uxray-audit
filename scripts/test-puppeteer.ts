@@ -1,4 +1,4 @@
-import { launchBrowser } from '@/server/chromium/launch';
+import { launchBrowser } from '@/server/audit/chromium';
 
 async function run() {
   console.log('Launching Chromium...');
