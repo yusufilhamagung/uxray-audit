@@ -6,7 +6,7 @@ function escapeHtml(value: string) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/'/g, '&apos;');
 }
 
 export function renderHtmlReport(params: {
@@ -73,25 +73,37 @@ export function renderHtmlReport(params: {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>UXAudit AI Report</title>
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 32px; }
+    :root {
+      --background: 33.33 100% 96.47%;
+      --foreground: 222.22 47.37% 11.18%;
+      --surface: 0 0% 100%;
+      --surface-2: 210 40% 98.04%;
+      --border: 214.29 31.82% 91.37%;
+      --text-muted: 215.38 16.32% 46.86%;
+      --accent: 20.54 90.24% 48.24%;
+      --status-error: 346.84 77.17% 49.80%;
+      --status-warning: 37.69 92.13% 50.20%;
+      --status-success: 142.13 76.22% 36.27%;
+    }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: hsl(var(--background)); color: hsl(var(--foreground)); margin: 0; padding: 32px; }
     .container { max-width: 900px; margin: 0 auto; }
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
     .title { font-size: 28px; font-weight: 700; }
-    .meta { font-size: 12px; color: #64748b; }
-    .summary { background: #fff7ed; border: 1px solid #fed7aa; padding: 16px; border-radius: 16px; margin-bottom: 24px; }
+    .meta { font-size: 12px; color: hsl(var(--text-muted)); }
+    .summary { background: hsl(var(--accent) / 0.12); border: 1px solid hsl(var(--accent) / 0.35); padding: 16px; border-radius: 16px; margin-bottom: 24px; }
     .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
-    .score-box { background: white; padding: 16px; border-radius: 16px; border: 1px solid #e2e8f0; }
+    .score-box { background: hsl(var(--surface)); padding: 16px; border-radius: 16px; border: 1px solid hsl(var(--border)); }
     .score-row { display: flex; justify-content: space-between; font-size: 14px; margin: 6px 0; }
     .score { font-weight: 600; }
-    .card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+    .card { background: hsl(var(--surface)); border: 1px solid hsl(var(--border)); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
     .issue-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
     .badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid; }
-    .badge.high { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
-    .badge.medium { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-    .badge.low { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-    .category { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+    .badge.high { background: hsl(var(--status-error) / 0.15); color: hsl(var(--status-error)); border-color: hsl(var(--status-error) / 0.35); }
+    .badge.medium { background: hsl(var(--status-warning) / 0.15); color: hsl(var(--status-warning)); border-color: hsl(var(--status-warning) / 0.35); }
+    .badge.low { background: hsl(var(--status-success) / 0.15); color: hsl(var(--status-success)); border-color: hsl(var(--status-success) / 0.35); }
+    .category { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: hsl(var(--text-muted)); }
     ul { padding-left: 20px; }
-    .muted { color: #64748b; }
+    .muted { color: hsl(var(--text-muted)); }
     .image { margin-top: 12px; font-size: 12px; }
   </style>
 </head>

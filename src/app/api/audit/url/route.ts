@@ -1,56 +1,62 @@
-import { headers } from 'next/headers';
+import { z } from 'zod';
 import { checkRateLimit } from '@/shared/utils/rate-limit';
 import { auditFromUrl } from '../composition';
+import { jsonResponse } from '@/lib/api/response';
+import { getRequestIp } from '@/lib/api/request';
+import { PageTypeEnum } from '@/shared/validation/schema';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const auditUrlSchema = z.object({
+  url: z.string().min(1),
+  page_type: PageTypeEnum,
+  optional_context: z.string().max(500).optional()
+});
+
 export async function POST(request: Request) {
-  const headerList = headers();
-  const ip = headerList.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+  const ip = getRequestIp();
   const rate = checkRateLimit(ip);
 
   if (!rate.allowed) {
-    return Response.json(
-      { error: { message: 'Too many requests. Please try again later.' } },
+    return jsonResponse(
+      { status: 'error', message: 'Too many requests. Please try again later.' },
       { status: 429 }
     );
   }
 
-  const { url, page_type, optional_context } = await request.json();
+  const body = await request.json().catch(() => null);
+  const parsed = auditUrlSchema.safeParse(body);
 
-  if (!url || typeof url !== 'string') {
-    return Response.json(
-      { error: { message: 'Please provide a valid URL.' } },
-      { status: 400 }
-    );
-  }
-
-  if (!page_type || typeof page_type !== 'string') {
-     return Response.json(
-      { error: { message: 'Please provide a page type.' } },
+  if (!parsed.success) {
+    return jsonResponse(
+      { status: 'error', message: 'Please provide a valid URL and page type.' },
       { status: 400 }
     );
   }
 
   try {
     const result = await auditFromUrl.execute({
-      url,
-      pageType: page_type,
-      optionalContext: optional_context
+      url: parsed.data.url,
+      pageType: parsed.data.page_type,
+      optionalContext: parsed.data.optional_context
     });
 
-    return Response.json({
-      audit_id: result.auditId,
-      result: result.result,
-      image_url: result.imageUrl,
-      model_used: result.modelUsed,
-      latency_ms: result.latencyMs,
-      created_at: result.createdAt
+    return jsonResponse({
+      status: 'success',
+      message: 'Audit berhasil dibuat.',
+      data: {
+        audit_id: result.auditId,
+        result: result.result,
+        image_url: result.imageUrl,
+        model_used: result.modelUsed,
+        latency_ms: result.latencyMs,
+        created_at: result.createdAt
+      }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An error occurred during audit.';
     const status = message.includes('not valid') || message.includes('Format') ? 400 : 500;
-    return Response.json({ error: { message } }, { status });
+    return jsonResponse({ status: 'error', message }, { status });
   }
 }

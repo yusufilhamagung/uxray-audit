@@ -1,7 +1,7 @@
 import { IAuditAnalyzer } from '@/application/ports/IAuditAnalyzer';
 import { IAuditRepository } from '@/application/ports/IAuditRepository';
 import { IFileStorage } from '@/application/ports/IFileStorage';
-import { PageTypeEnum } from '@/shared/validation/schema';
+import { AuditResultSchema, PageTypeEnum } from '@/shared/validation/schema';
 import { randomUUID } from 'node:crypto';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -52,13 +52,18 @@ export class AuditFromImage {
     });
     const latencyMs = Date.now() - start;
 
+    const parsedResult = AuditResultSchema.safeParse(result);
+    if (!parsedResult.success) {
+      throw new Error('Hasil audit tidak valid.');
+    }
+
     // 3. Save
     const saved = await this.repository.save({
       id: auditId,
       page_type: pageTypeParsed.data,
       image_url: imageUrl,
       ux_score: result.ux_score,
-      result_json: result,
+      result_json: parsedResult.data,
       model_used: modelUsed,
       latency_ms: latencyMs
     });
