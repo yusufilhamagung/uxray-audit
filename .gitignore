@@ -5,6 +5,9 @@ out/
 tests/
 supabase/
 docs/
+data/
+public/
+scripts/
 
 *.log
 npm-debug.log*
