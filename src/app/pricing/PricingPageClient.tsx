@@ -1,12 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { EarlyAccessSchema } from '@/shared/types/early-access';
 import { logClientEvent } from '@/infrastructure/analytics/client';
 import type { ApiResponse } from '@/shared/types/api';
 import { EARLY_ACCESS_COPY } from '@config/copy';
 import { useAccess } from '@/presentation/providers/AccessProvider';
+import { setFullAccess } from '@/infrastructure/access/sessionAccess';
 
 type PricingPageClientProps = {
   source?: string;
@@ -27,6 +29,7 @@ export default function PricingPageClient({ source, auditId, demoEnabled }: Pric
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { level, setLevel } = useAccess();
+  const router = useRouter();
 
   const validAuditId = useMemo(() => {
     if (!auditId) return undefined;
@@ -79,6 +82,7 @@ export default function PricingPageClient({ source, auditId, demoEnabled }: Pric
       setErrorMessage(null);
       logClientEvent('email_submitted', { audit_id: validAuditId, source });
       setLevel('early');
+      setFullAccess();
     } catch (error) {
       console.error(error);
       setStatus('error');
@@ -126,8 +130,7 @@ export default function PricingPageClient({ source, auditId, demoEnabled }: Pric
           <button
             type="button"
             className="btn-secondary w-full"
-            disabled
-            title="Upgrade required to run a new audit"
+            onClick={() => router.push('/audit?new=1')}
           >
             Run Another Audit
           </button>

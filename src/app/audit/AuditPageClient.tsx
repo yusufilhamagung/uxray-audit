@@ -1,9 +1,9 @@
 ﻿'use client';
 
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image, { type ImageLoader } from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { SeverityBadge } from '@/presentation/components/SeverityBadge';
 import ThemeSwitcher from '@/presentation/components/ThemeSwitcher';
 import type { AuditReport as AuditResult, Category, PageType } from '@/shared/types/audit';
@@ -205,6 +205,7 @@ const LockedReportSection = memo(function LockedReportSection({
 
 export default function AuditPageClient() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [inputMode, setInputMode] = useState<'image' | 'url'>('image');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
@@ -232,6 +233,24 @@ export default function AuditPageClient() {
   const teaserQuickWins = accessView?.teaser.quickWins ?? [];
   const lockedIssues = accessView?.locked.issues ?? [];
   const lockedQuickWins = accessView?.locked.quickWins ?? [];
+
+  const resetAuditForm = useCallback(() => {
+    setInputMode('image');
+    setFile(null);
+    setUrl('');
+    setPreviewUrl(null);
+    setPageType('');
+    setOptionalContext('');
+    setResult(null);
+    setAuditId(null);
+    setModelUsed(null);
+    setLatencyMs(null);
+    setError(null);
+    setFreeInsightReady(false);
+    setInsightConsumed(false);
+    setLoading(false);
+    setLoadingMessage(loadingMessages[0]);
+  }, []);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
@@ -275,6 +294,13 @@ export default function AuditPageClient() {
         .finally(() => setLoading(false));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      resetAuditForm();
+      router.replace('/audit');
+    }
+  }, [searchParams, resetAuditForm, router]);
 
   useEffect(() => {
     if (inputMode === 'url') {
@@ -441,21 +467,6 @@ export default function AuditPageClient() {
     }
   };
 
-  const handleReset = () => {
-    setFile(null);
-    setUrl('');
-    setPreviewUrl(null);
-    setPageType('');
-    setOptionalContext('');
-    setResult(null);
-    setAuditId(null);
-    setModelUsed(null);
-    setLatencyMs(null);
-    setError(null);
-    setFreeInsightReady(false);
-    setInsightConsumed(false);
-  };
-
   const handleDownloadJson = () => {
     if (!result) return;
     const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
@@ -608,7 +619,7 @@ export default function AuditPageClient() {
               {result && (
                 <button
                   type="button"
-                  onClick={handleReset}
+                  onClick={resetAuditForm}
                   className="btn-secondary"
                   disabled={loading}
                 >
