@@ -1,5 +1,5 @@
 import { IAuditRepository, AuditEntity } from '@/application/ports/IAuditRepository';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/infrastructure/storage/supabase/server';
 
 export class SupabaseAuditRepository implements IAuditRepository {
   async save(audit: Omit<AuditEntity, 'created_at'>): Promise<AuditEntity> {

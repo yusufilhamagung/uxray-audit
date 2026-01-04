@@ -1,6 +1,6 @@
-import { jsonResponse } from '@/lib/api/response';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { serverEnv } from '@/lib/env/server';
+import { jsonResponse } from '@/shared/utils/response';
+import { getSupabaseServerClient } from '@/infrastructure/storage/supabase/server';
+import { serverEnv } from '@/infrastructure/env/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   if (!serverEnv.isSupabaseConfigured) {
     return jsonResponse(
-      { status: 'error', message: 'Supabase belum dikonfigurasi.' },
+      { status: 'error', message: 'Supabase is not configured.' },
       { status: 500 }
     );
   }
@@ -31,7 +31,7 @@ export async function GET() {
   } catch (error) {
     console.error('Early access count failed:', error);
     return jsonResponse(
-      { status: 'error', message: 'Gagal memuat data early access.' },
+      { status: 'error', message: 'Failed to load signup count.' },
       { status: 500 }
     );
   }

@@ -1,19 +1,19 @@
-export default function HowItWorks() {
+﻿export default function HowItWorks() {
   const steps = [
     {
       num: '01',
       title: 'Upload Screenshot',
-      desc: 'Or simply paste your URL. Our AI visualizes your site just like a user would.',
+      desc: 'Or paste your URL. We visualize your site through a user lens.',
     },
     {
       num: '02',
-      title: 'AI Analysis',
-      desc: 'Our models scan for contrast, hierarchy errors, and common UX pitfalls.',
+      title: 'Instant Review',
+      desc: 'We scan for contrast, hierarchy errors, and common UX pitfalls.',
     },
     {
       num: '03',
       title: 'Get Results',
-      desc: 'Receive a prioritized list of fixes that increase your conversion rate instantly.',
+      desc: 'Receive a prioritized list of fixes that increase your conversion clarity.',
     },
   ];
 

@@ -1,4 +1,4 @@
-export default function Audience() {
+﻿export default function Audience() {
   const personas = [
     {
       role: 'Founders',
@@ -22,7 +22,7 @@ export default function Audience() {
       <div className="section-container">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Who needs UXAudit AI?
+            Who needs UXRay?
           </h2>
           <p className="mt-4 text-muted-foreground">Built for teams that move fast and convert quality.</p>
         </div>

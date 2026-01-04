@@ -1,4 +1,4 @@
-export default function Trust() {
+﻿export default function Trust() {
   return (
     <section className="py-24 bg-background relative overflow-hidden">
       <div className="section-container relative z-10 text-center">

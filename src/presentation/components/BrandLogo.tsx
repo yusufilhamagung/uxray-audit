@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
-import { getBrandLogoUrl } from '@/lib/branding/logo';
+import { getBrandLogoUrl } from '@/infrastructure/branding/logo';
 
 type BrandLogoProps = {
   size?: number;
@@ -10,7 +10,7 @@ type BrandLogoProps = {
   alt?: string;
 };
 
-export default function BrandLogo({ size = 32, className, alt = 'UXAudit logo' }: BrandLogoProps) {
+export default function BrandLogo({ size = 32, className, alt = 'UXRay logo' }: BrandLogoProps) {
   const [hasError, setHasError] = useState(false);
   const logoUrl = useMemo(() => getBrandLogoUrl(), []);
 

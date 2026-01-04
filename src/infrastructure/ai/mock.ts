@@ -1,6 +1,14 @@
-﻿import mockAudit from '@/fixtures/mock-audit.json';
-import type { AuditResult } from '@/shared/validation/schema';
+import type { AuditReport } from '@/domain/entities/audit-report';
+import { normalizeAuditResult } from '@/application/usecases/analyzeFree';
 
-export function getMockAudit(): AuditResult {
-  return JSON.parse(JSON.stringify(mockAudit)) as AuditResult;
+export function getMockAudit(): AuditReport {
+  return normalizeAuditResult(
+    null,
+    {
+      seed: 'mock',
+      pageType: 'Landing',
+      image: { sizeBytes: 180000, type: 'image/png', width: 1200, height: 800 }
+    },
+    'full'
+  );
 }

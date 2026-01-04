@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+﻿import { Suspense } from 'react';
 import AuditPageClient from './AuditPageClient';
 
 export default function AuditPage() {

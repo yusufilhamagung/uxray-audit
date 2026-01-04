@@ -1,13 +1,17 @@
-'use client';
+﻿'use client';
 
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import Image, { type ImageLoader } from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { SeverityBadge } from '@/presentation/components/SeverityBadge';
 import ThemeSwitcher from '@/presentation/components/ThemeSwitcher';
-import type { AuditResult, Category, PageType } from '@/shared/validation/schema';
-import type { ApiResponse } from '@/lib/api/types';
+import type { AuditReport as AuditResult, Category, PageType } from '@/shared/types/audit';
+import type { ApiResponse } from '@/shared/types/api';
+import { logClientEvent } from '@/infrastructure/analytics/client';
+import { LOCKED_REPORT_COPY } from '@config/copy';
+import { useAccess } from '@/presentation/providers/AccessProvider';
+import { buildAuditAccessView, type AuditLockState } from '@/domain/rules/access-gating';
 
 const pageTypes: PageType[] = ['Landing', 'App', 'Dashboard'];
 const scoreCategories: Category[] = [
@@ -35,6 +39,7 @@ type AuditCreateData = {
   model_used: string;
   latency_ms: number;
   created_at: string;
+  lock_state?: AuditLockState;
 };
 
 type AuditFetchData = {
@@ -49,8 +54,12 @@ type AuditFetchData = {
 };
 
 type LockedReportSectionProps = {
-  result: AuditResult;
+  teaserIssues: AuditResult['issues'];
+  teaserQuickWins: AuditResult['quick_wins'];
+  lockedIssues: AuditResult['issues'];
+  lockedQuickWins: AuditResult['quick_wins'];
   auditId: string | null;
+  onUnlockClick: () => void;
 };
 
 const MODEL_LATENCY_LINE = /^Model:\s.*-\sLatency:\s\d+\sms$/i;
@@ -78,27 +87,39 @@ const sanitizeValue = (value: unknown): unknown => {
 
 const sanitizeAuditResult = (value: AuditResult): AuditResult => sanitizeValue(value) as AuditResult;
 
-const LockedReportSection = memo(function LockedReportSection({ result, auditId }: LockedReportSectionProps) {
-  const teaserIssues = useMemo(() => result.issues.slice(0, 2), [result.issues]);
-  const teaserQuickWins = useMemo(() => result.quick_wins.slice(0, 1), [result.quick_wins]);
-  const lockedIssues = useMemo(() => result.issues.slice(2), [result.issues]);
-  const lockedQuickWins = useMemo(() => result.quick_wins.slice(1), [result.quick_wins]);
+const LockedReportSection = memo(function LockedReportSection({
+  teaserIssues,
+  teaserQuickWins,
+  lockedIssues,
+  lockedQuickWins,
+  auditId,
+  onUnlockClick
+}: LockedReportSectionProps) {
   const pricingHref = auditId ? `/pricing?from=audit&id=${auditId}` : '/pricing?from=audit';
+  const copy = LOCKED_REPORT_COPY;
 
   return (
     <div className="card p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">
-            Full Report (Early Access)
-          </p>
-          <h3 className="mt-2 text-lg font-semibold text-foreground">Laporan lengkap + prioritas perbaikan</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Unlock untuk akses laporan lengkap + prioritas perbaikan.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Full Report (Early Access)</p>
+          <h3 className="mt-2 text-lg font-semibold text-foreground">{copy.headline}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{copy.subheadline}</p>
+          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+            {copy.bullets.map((bullet) => (
+              <li key={bullet} className="flex items-start gap-2">
+                <span className="mt-[2px] h-1.5 w-1.5 rounded-full bg-accent" />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <Link href={pricingHref} className="btn-primary w-full sm:w-auto text-center">
-          Unlock Full Report
+        <Link
+          href={pricingHref}
+          className="btn-primary w-full sm:w-auto text-center"
+          onClick={onUnlockClick}
+        >
+          {copy.cta}
         </Link>
       </div>
 
@@ -168,11 +189,13 @@ const LockedReportSection = memo(function LockedReportSection({ result, auditId 
               />
             </svg>
           </div>
-          <p className="text-sm font-semibold text-foreground">
-            Unlock untuk akses laporan lengkap + prioritas perbaikan.
-          </p>
-          <Link href={pricingHref} className="btn-primary w-full max-w-[220px] text-center">
-            Unlock
+          <p className="text-sm font-semibold text-foreground">{copy.microcopy}</p>
+          <Link
+            href={pricingHref}
+            className="btn-primary w-full max-w-[220px] text-center"
+            onClick={onUnlockClick}
+          >
+            {copy.cta}
           </Link>
         </div>
       </div>
@@ -182,6 +205,7 @@ const LockedReportSection = memo(function LockedReportSection({ result, auditId 
 
 export default function AuditPageClient() {
   const searchParams = useSearchParams();
+  const [inputMode, setInputMode] = useState<'image' | 'url'>('image');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -194,6 +218,20 @@ export default function AuditPageClient() {
   const [auditId, setAuditId] = useState<string | null>(null);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [freeInsightReady, setFreeInsightReady] = useState(false);
+  const [insightConsumed, setInsightConsumed] = useState(false);
+  const whyThisMattersRef = useRef<HTMLParagraphElement | null>(null);
+  const { level: accessLevel } = useAccess();
+  const accessView = useMemo(
+    () => (result ? buildAuditAccessView(result, accessLevel) : null),
+    [result, accessLevel]
+  );
+  const canViewDetails = accessView?.lockState.canViewDetails ?? false;
+  const canViewFull = accessView?.lockState.canViewFull ?? false;
+  const teaserIssues = accessView?.teaser.issues ?? [];
+  const teaserQuickWins = accessView?.teaser.quickWins ?? [];
+  const lockedIssues = accessView?.locked.issues ?? [];
+  const lockedQuickWins = accessView?.locked.quickWins ?? [];
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
@@ -205,6 +243,7 @@ export default function AuditPageClient() {
     const urlParam = searchParams.get('url');
     if (urlParam) {
       setUrl(urlParam);
+      setInputMode('url');
     }
 
     const idParam = searchParams.get('id');
@@ -226,6 +265,8 @@ export default function AuditPageClient() {
           setModelUsed(payload.data.model_used);
           setLatencyMs(payload.data.latency_ms);
           setPreviewUrl(payload.data.image_url);
+          setFreeInsightReady(true);
+          setInsightConsumed(false);
         })
         .catch((err) => {
           console.error(err);
@@ -236,14 +277,21 @@ export default function AuditPageClient() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (inputMode === 'url') {
+      if (!result && !searchParams.get('id')) {
+        setPreviewUrl(null);
+      }
+      return;
+    }
+
     if (!file) {
-      if (!url && !searchParams.get('id')) setPreviewUrl(null);
+      if (!searchParams.get('id')) setPreviewUrl(null);
       return;
     }
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [file, url, searchParams]);
+  }, [file, inputMode, result, searchParams]);
 
   useEffect(() => {
     if (!loading) return;
@@ -256,6 +304,28 @@ export default function AuditPageClient() {
     return () => clearInterval(interval);
   }, [loading]);
 
+  useEffect(() => {
+    if (insightConsumed) {
+      logClientEvent('insight_scrolled_to_end', { audit_id: auditId });
+    }
+  }, [insightConsumed, auditId]);
+
+
+  useEffect(() => {
+    if (!freeInsightReady || insightConsumed || !whyThisMattersRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInsightConsumed(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.8 }
+    );
+    observer.observe(whyThisMattersRef.current);
+    return () => observer.disconnect();
+  }, [freeInsightReady, insightConsumed, result]);
+
   const scoreEntries = useMemo(() => {
     if (!result) return [];
     return scoreCategories.map((category) => ({
@@ -264,44 +334,79 @@ export default function AuditPageClient() {
     }));
   }, [result]);
 
+  const isValidUrl = (value: string) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     setError(null);
 
-    if (!file && !url) {
-      setError('Mohon unggah screenshot atau masukkan URL.');
-      return;
-    }
     if (!pageType) {
       setError('Mohon pilih tipe halaman.');
       return;
     }
 
+    const trimmedContext = optionalContext.trim();
+
+    if (inputMode === 'image') {
+      if (!file) {
+        setError('Mohon unggah screenshot untuk memulai audit.');
+        return;
+      }
+    } else {
+      const trimmedUrl = url.trim();
+      if (!trimmedUrl) {
+        setError('Mohon masukkan URL untuk memulai audit.');
+        return;
+      }
+      if (!isValidUrl(trimmedUrl)) {
+        setError('URL harus diawali http:// atau https://');
+        return;
+      }
+    }
+
+    logClientEvent('audit_started', { page_type: pageType, input_mode: inputMode });
+    setFreeInsightReady(false);
+    setInsightConsumed(false);
     setLoading(true);
     setResult(null);
     setAuditId(null);
+    setModelUsed(null);
+    setLatencyMs(null);
 
     try {
-      let response;
-      if (file) {
+      let response: Response;
+
+      if (inputMode === 'image') {
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append('image', file as File);
         formData.append('page_type', pageType);
-        if (optionalContext.trim()) {
-          formData.append('optional_context', optionalContext.trim());
+        formData.append('access_level', accessLevel);
+        if (trimmedContext) {
+          formData.append('optional_context', trimmedContext);
         }
+
         response = await fetch('/api/audit', {
           method: 'POST',
           body: formData
         });
       } else {
+        const trimmedUrl = url.trim();
         response = await fetch('/api/audit/url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            url,
+            url: trimmedUrl,
             page_type: pageType,
-            optional_context: optionalContext.trim()
+            optional_context: trimmedContext || undefined,
+            access_level: accessLevel
           })
         });
       }
@@ -318,8 +423,14 @@ export default function AuditPageClient() {
       setAuditId(payload.data.audit_id);
       setModelUsed(payload.data.model_used);
       setLatencyMs(payload.data.latency_ms);
+      setFreeInsightReady(true);
+      logClientEvent('audit_completed', {
+        audit_id: payload.data.audit_id,
+        analysis_state: payload.data.result.analysis_state,
+        input_mode: inputMode
+      });
 
-      if (payload.data.image_url && !file) {
+      if (payload.data.image_url) {
         setPreviewUrl(payload.data.image_url);
       }
     } catch (err) {
@@ -341,6 +452,8 @@ export default function AuditPageClient() {
     setModelUsed(null);
     setLatencyMs(null);
     setError(null);
+    setFreeInsightReady(false);
+    setInsightConsumed(false);
   };
 
   const handleDownloadJson = () => {
@@ -358,10 +471,10 @@ export default function AuditPageClient() {
     <div className="relative">
       <main className="mx-auto min-h-screen max-w-6xl px-6 pb-20 pt-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXAudit AI</p>
-            <h1 className="text-3xl font-semibold text-foreground">Audit UX</h1>
-          </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXRay</p>
+          <h1 className="text-3xl font-semibold text-foreground">Audit UX</h1>
+        </div>
           <div className="flex items-center gap-3">
             <ThemeSwitcher />
             <Link href="/" className="btn-secondary">
@@ -371,52 +484,88 @@ export default function AuditPageClient() {
         </header>
 
         <form onSubmit={handleSubmit} className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="card space-y-6 p-6">
+          <div className="card space-y-6 p-6 min-w-0">
             <div>
-              <label className="text-sm font-semibold text-foreground">Upload Screenshot (PNG/JPG)</label>
-              <div className="mt-2">
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  onChange={(event) => {
-                    setFile(event.target.files?.[0] ?? null);
-                    if (event.target.files?.[0]) setUrl('');
+              <label className="text-sm font-semibold text-foreground">Mode Audit</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={inputMode === 'image' ? 'btn-primary' : 'btn-secondary'}
+                  onClick={() => {
+                    setInputMode('image');
+                    setUrl('');
                   }}
-                  className="block w-full cursor-pointer rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground"
-                  disabled={loading || !!url}
-                />
+                  disabled={loading}
+                >
+                  Screenshot
+                </button>
+                <button
+                  type="button"
+                  className={inputMode === 'url' ? 'btn-primary' : 'btn-secondary'}
+                  onClick={() => {
+                    setInputMode('url');
+                    setFile(null);
+                  }}
+                  disabled={loading}
+                >
+                  Link
+                </button>
               </div>
             </div>
 
-            <div className="text-center text-sm text-subtle font-medium">- ATAU -</div>
-
-            <div>
-              <label className="text-sm font-semibold text-foreground">URL Website</label>
-              <div className="mt-2">
-                <input
-                  type="url"
-                  placeholder="https://contoh.com"
-                  value={url}
-                  onChange={(e) => {
-                    setUrl(e.target.value);
-                    if (e.target.value) setFile(null);
-                  }}
-                  className="block w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-subtle focus:border-ring focus:ring-2 focus:ring-ring/20"
-                  disabled={loading || !!file}
-                />
+            {inputMode === 'image' && (
+              <div>
+                <label className="text-sm font-semibold text-foreground">Upload Screenshot (PNG/JPG)</label>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={(event) => {
+                      setFile(event.target.files?.[0] ?? null);
+                      if (event.target.files?.[0]) {
+                        setUrl('');
+                        setInputMode('image');
+                      }
+                    }}
+                    className="block w-full cursor-pointer rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground"
+                    disabled={loading}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {inputMode === 'url' && (
+              <div>
+                <label className="text-sm font-semibold text-foreground">URL Website</label>
+                <div className="mt-2">
+                  <input
+                    type="url"
+                    placeholder="https://contoh.com"
+                    value={url}
+                    onChange={(event) => {
+                      setUrl(event.target.value);
+                      if (event.target.value) {
+                        setFile(null);
+                        setInputMode('url');
+                      }
+                    }}
+                    className="block w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-subtle focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-semibold text-foreground">Tipe Halaman</label>
               <div className="mt-2">
                 <select
-                  value={pageType}
-                  onChange={(event) => setPageType(event.target.value as PageType)}
-                  className="block w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground"
-                  disabled={loading}
-                  required
-                >
+                    value={pageType}
+                    onChange={(event) => setPageType(event.target.value as PageType)}
+                    className="block w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground"
+                    disabled={loading}
+                    required
+                  >
                   <option value="" disabled>
                     Pilih tipe halaman
                   </option>
@@ -432,15 +581,15 @@ export default function AuditPageClient() {
             <div>
               <label className="text-sm font-semibold text-foreground">Konteks Tambahan (opsional)</label>
               <div className="mt-2">
-                <textarea
-                  value={optionalContext}
-                  onChange={(event) => setOptionalContext(event.target.value)}
-                  placeholder="Contoh: target user adalah pemilik UMKM, tujuan halaman: ajakan demo."
-                  className="min-h-[90px] w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground placeholder:text-subtle"
-                  disabled={loading}
-                />
+                  <textarea
+                    value={optionalContext}
+                    onChange={(event) => setOptionalContext(event.target.value)}
+                    placeholder="Contoh: target user adalah pemilik UMKM, tujuan halaman: ajakan demo."
+                    className="min-h-[90px] w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground placeholder:text-subtle"
+                    disabled={loading}
+                  />
+                </div>
               </div>
-            </div>
 
             {error && (
               <div className="rounded-2xl border border-status-error/30 bg-status-error/10 px-4 py-3 text-sm text-status-error">
@@ -449,11 +598,20 @@ export default function AuditPageClient() {
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <button type="submit" className="btn-primary" disabled={loading}>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={loading}
+              >
                 {loading ? 'Sedang Audit...' : 'Generate Audit'}
               </button>
               {result && (
-                <button type="button" onClick={handleReset} className="btn-secondary">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="btn-secondary"
+                  disabled={loading}
+                >
                   Audit lagi
                 </button>
               )}
@@ -470,7 +628,7 @@ export default function AuditPageClient() {
             )}
           </div>
 
-          <div className="card flex h-full flex-col items-center justify-center gap-4 p-6">
+          <div className="card flex h-full flex-col items-center justify-center gap-4 p-6 min-w-0">
             <div className="text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Preview</p>
               <h2 className="text-lg font-semibold text-foreground">Screenshot Kamu</h2>
@@ -489,7 +647,7 @@ export default function AuditPageClient() {
               </div>
             ) : (
               <div className="flex h-[260px] w-full items-center justify-center rounded-2xl border border-dashed border-border bg-surface-2 text-sm text-subtle">
-                Upload screenshot untuk melihat preview
+                Tambahkan screenshot atau link untuk melihat preview
               </div>
             )}
           </div>
@@ -519,7 +677,12 @@ export default function AuditPageClient() {
                     <li key={item}>{item}</li>
                   ))}
                 </ol>
-                <p className="text-sm text-muted-foreground">{result.summary.overall_notes}</p>
+                <p
+                  ref={whyThisMattersRef}
+                  className="text-sm text-muted-foreground"
+                >
+                  {result.summary.overall_notes}
+                </p>
               </div>
             </div>
 
@@ -538,64 +701,78 @@ export default function AuditPageClient() {
               ))}
             </div>
 
-            <LockedReportSection result={result} auditId={auditId} />
+            {insightConsumed && accessView?.lockState.showLockedCta && (
+              <LockedReportSection
+                teaserIssues={teaserIssues}
+                teaserQuickWins={teaserQuickWins}
+                lockedIssues={lockedIssues}
+                lockedQuickWins={lockedQuickWins}
+                auditId={auditId}
+                onUnlockClick={() => {
+                  logClientEvent('unlock_clicked', { audit_id: auditId });
+                }}
+              />
+            )}
 
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-foreground">Issues Detail</h3>
-              <div className="mt-4 space-y-5">
-                {result.issues.map((issue, index) => (
-                  <div key={`${issue.title}-${index}`} className="rounded-2xl border border-border bg-card p-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <SeverityBadge severity={issue.severity} />
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-subtle">
-                        {issue.category}
-                      </span>
+            {canViewDetails && (
+              <>
+                <div className="card p-6">
+                  <h3 className="text-lg font-semibold text-foreground">Issues Detail</h3>
+                  <div className="mt-4 space-y-5">
+                    {accessView?.visibleIssues?.map((issue, index) => (
+                      <div key={`${issue.title}-${index}`} className="rounded-2xl border border-border bg-card p-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <SeverityBadge severity={issue.severity} />
+                          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-subtle">
+                            {issue.category}
+                          </span>
+                        </div>
+                        <h4 className="mt-2 text-base font-semibold text-foreground">{issue.title}</h4>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          <span className="font-semibold text-foreground">Why users hesitate:</span> {issue.evidence}
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          <span className="font-semibold text-foreground">Impact:</span> {issue.impact}
+                        </p>
+                        <div className="mt-3 text-sm text-muted-foreground">
+                          <span className="font-semibold text-foreground">How to fix it:</span>
+                          <ul className="mt-2 list-disc space-y-1 pl-5">
+                            {issue.recommendation_steps.map((step) => (
+                              <li key={step}>{step}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {canViewFull && (
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="card p-6">
+                      <h3 className="text-lg font-semibold text-foreground">Quick Wins</h3>
+                      <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                        {accessView?.visibleQuickWins?.map((win) => (
+                          <li key={win.title}>
+                            <span className="font-semibold text-foreground">{win.title}:</span> {win.action}
+                            <div className="text-xs text-subtle">Impact: {win.expected_impact}</div>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <h4 className="mt-2 text-base font-semibold text-foreground">{issue.title}</h4>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">Problem:</span> {issue.problem}
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">Evidence:</span> {issue.evidence}
-                    </p>
-                    <div className="mt-3 text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">Recommendation:</span>
-                      <ul className="mt-2 list-disc space-y-1 pl-5">
-                        {issue.recommendation_steps.map((step) => (
+                    <div className="card p-6">
+                      <h3 className="text-lg font-semibold text-foreground">Next Steps</h3>
+                      <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                        {accessView?.visibleNextSteps?.map((step) => (
                           <li key={step}>{step}</li>
                         ))}
                       </ul>
                     </div>
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">Expected impact:</span>{' '}
-                      {issue.expected_impact}
-                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
+                )}
+              </>
+            )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-foreground">Quick Wins</h3>
-                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                  {result.quick_wins.map((win) => (
-                    <li key={win.title}>
-                      <span className="font-semibold text-foreground">{win.title}:</span> {win.action}
-                      <div className="text-xs text-subtle">Impact: {win.expected_impact}</div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-foreground">Next Steps</h3>
-                <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-                  {result.next_steps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
           </section>
         )}
       </main>

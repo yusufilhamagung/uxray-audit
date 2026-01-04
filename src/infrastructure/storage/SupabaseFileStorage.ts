@@ -1,6 +1,6 @@
 import { IFileStorage } from '@/application/ports/IFileStorage';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { serverEnv } from '@/lib/env/server';
+import { getSupabaseServerClient } from '@/infrastructure/storage/supabase/server';
+import { serverEnv } from '@/infrastructure/env/server';
 
 export class SupabaseFileStorage implements IFileStorage {
   async upload(path: string, file: Buffer, contentType: string): Promise<string> {

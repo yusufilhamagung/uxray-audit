@@ -1,10 +1,6 @@
-import { AuditResult } from '@/shared/validation/schema';
+import type { AuditInput } from '@/domain/value-objects/audit-input';
+import type { AuditReport } from '@/domain/entities/audit-report';
 
 export interface IAuditAnalyzer {
-  analyze(input: {
-    imageBase64: string;
-    imageType: string;
-    pageType: string;
-    optionalContext?: string;
-  }): Promise<{ result: AuditResult; modelUsed: string }>;
+  analyze(input: AuditInput): Promise<{ result: AuditReport; modelUsed: string }>;
 }
