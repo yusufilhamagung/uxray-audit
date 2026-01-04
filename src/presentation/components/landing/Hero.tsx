@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ApiResponse } from '@/lib/api/types';
+import type { ApiResponse } from '@/shared/types/api';
 
 export default function Hero() {
   const router = useRouter();
@@ -44,8 +44,8 @@ export default function Hero() {
 
   return (
     <section className="relative overflow-hidden pt-32 pb-16 sm:pb-24 lg:pb-32">
-      <div className="section-container flex flex-col items-center justify-center">
-        <div className="space-y-8 text-center max-w-4xl mx-auto">
+      <div className="section-container flex flex-col items-center justify-center px-4 sm:px-6">
+        <div className="space-y-8 text-center max-w-4xl mx-auto w-full">
           <div className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
             <span className="flex h-2 w-2 rounded-full bg-accent mr-2 animate-pulse"></span>
             Audited 24k+ sites
@@ -65,16 +65,16 @@ export default function Hero() {
           
           <div className="flex flex-col items-center gap-4 w-full">
              {/* Mode Toggles */}
-             <div className="bg-surface-2 p-1 rounded-lg inline-flex">
+             <div className="bg-surface-2 p-1 rounded-lg inline-flex flex-wrap justify-center gap-2 w-full sm:w-auto">
                 <button 
                    onClick={() => setMode('url')}
-                   className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${mode === 'url' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                   className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${mode === 'url' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'} w-full sm:w-auto`}
                 >
                   Website URL
                 </button>
                 <button 
                   onClick={() => setMode('upload')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${mode === 'upload' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${mode === 'upload' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'} w-full sm:w-auto`}
                 >
                   Upload Screenshot
                 </button>

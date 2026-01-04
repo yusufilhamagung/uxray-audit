@@ -1,4 +1,4 @@
-export default function ProblemSection() {
+﻿export default function ProblemSection() {
   const problems = [
     {
       title: 'Analytics are silent',

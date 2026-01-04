@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { z } from 'zod';
-import { EarlyAccessSchema } from '@/shared/validation/early-access';
-import { logClientEvent } from '@/lib/analytics/client';
-import type { ApiResponse } from '@/lib/api/types';
+import { EarlyAccessSchema } from '@/shared/types/early-access';
+import { logClientEvent } from '@/infrastructure/analytics/client';
+import type { ApiResponse } from '@/shared/types/api';
+import { EARLY_ACCESS_COPY } from '@config/copy';
+import { useAccess } from '@/presentation/providers/AccessProvider';
 
 type PricingPageClientProps = {
   source?: string;
   auditId?: string;
+  demoEnabled?: boolean;
 };
 
 type EarlyAccessResponse = {
@@ -19,28 +22,25 @@ const emailOnlySchema = z.object({
   email: z.string().email()
 });
 
-export default function PricingPageClient({ source, auditId }: PricingPageClientProps) {
+export default function PricingPageClient({ source, auditId, demoEnabled }: PricingPageClientProps) {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'exists' | 'error'>('idle');
-  const [message, setMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { level, setLevel } = useAccess();
 
   const validAuditId = useMemo(() => {
     if (!auditId) return undefined;
     return z.string().uuid().safeParse(auditId).success ? auditId : undefined;
   }, [auditId]);
 
-  useEffect(() => {
-    logClientEvent('early_access_viewed', { source, audit_id: validAuditId });
-  }, [source, validAuditId]);
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMessage(null);
+    setErrorMessage(null);
 
     const emailParsed = emailOnlySchema.safeParse({ email });
     if (!emailParsed.success) {
       setStatus('error');
-      setMessage('Email tidak valid. Pastikan formatnya benar.');
+      setErrorMessage('Email tidak valid. Pastikan formatnya benar.');
       return;
     }
 
@@ -53,12 +53,11 @@ export default function PricingPageClient({ source, auditId }: PricingPageClient
     const finalParsed = EarlyAccessSchema.safeParse(payload);
     if (!finalParsed.success) {
       setStatus('error');
-      setMessage('Email tidak valid. Pastikan formatnya benar.');
+      setErrorMessage('Email tidak valid. Pastikan formatnya benar.');
       return;
     }
 
     setStatus('loading');
-    logClientEvent('early_access_submitted', { source, audit_id: validAuditId });
 
     try {
       const response = await fetch('/api/early-access', {
@@ -71,24 +70,19 @@ export default function PricingPageClient({ source, auditId }: PricingPageClient
 
       if (!response.ok) {
         setStatus('error');
-        setMessage(data?.message || 'Terjadi kesalahan saat menyimpan email.');
-        return;
-      }
-
-      if (data.status === 'exists') {
-        setStatus('exists');
-        setMessage('Email kamu sudah terdaftar. Kami akan kabari segera.');
-        logClientEvent('early_access_exists', { email: emailParsed.data.email });
+        setErrorMessage(data?.message || 'Terjadi kesalahan saat menyimpan email.');
         return;
       }
 
       setStatus('success');
-      setMessage(data.message || 'Makasih! Kami akan infokan kalau early access sudah terbuka.');
       setEmail('');
+      setErrorMessage(null);
+      logClientEvent('email_submitted', { audit_id: validAuditId, source });
+      setLevel('early');
     } catch (error) {
       console.error(error);
       setStatus('error');
-      setMessage('Terjadi kesalahan saat menyimpan email.');
+      setErrorMessage('Terjadi kesalahan saat menyimpan email.');
     }
   };
 
@@ -96,9 +90,7 @@ export default function PricingPageClient({ source, auditId }: PricingPageClient
     <div className="card flex flex-col gap-6 p-6">
       <div>
         <h2 className="text-xl font-semibold text-foreground">Early Access</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Kami akan kirim info saat early access dibuka.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{EARLY_ACCESS_COPY.headline}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,31 +105,49 @@ export default function PricingPageClient({ source, auditId }: PricingPageClient
             disabled={status === 'loading'}
             required
           />
-          <p className="mt-2 text-xs text-muted-foreground">
-            Kami akan kirim info saat early access dibuka.
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{EARLY_ACCESS_COPY.emailHelper}</p>
         </div>
 
-        <button
-          type="submit"
-          className="btn-primary w-full"
-          disabled={status === 'loading'}
-        >
-          {status === 'loading' ? 'Mengirim...' : 'Join Early Access'}
+        <button type="submit" className="btn-primary w-full" disabled={status === 'loading'}>
+          {status === 'loading' ? 'Mengirim...' : EARLY_ACCESS_COPY.cta}
         </button>
 
-        {message && (
-          <div
-            className={`rounded-2xl border px-4 py-3 text-sm ${
-              status === 'error'
-                ? 'border-status-error/30 bg-status-error/10 text-status-error'
-                : 'border-status-success/30 bg-status-success/10 text-status-success'
-            }`}
-          >
-            {message}
+        {status === 'error' && errorMessage && (
+          <div className="rounded-2xl border border-status-error/30 bg-status-error/10 px-4 py-3 text-sm text-status-error">
+            {errorMessage}
           </div>
         )}
       </form>
+
+      {status === 'success' && (
+        <div className="space-y-4 rounded-2xl border border-status-success/30 bg-status-success/10 px-4 py-3 text-sm text-status-success">
+          <p className="font-semibold text-foreground">{EARLY_ACCESS_COPY.confirmation}</p>
+          <p className="text-muted-foreground">{EARLY_ACCESS_COPY.clarification}</p>
+          <button
+            type="button"
+            className="btn-secondary w-full"
+            disabled
+            title="Upgrade required to run a new audit"
+          >
+            Run Another Audit
+          </button>
+        </div>
+      )}
+
+      {demoEnabled && (
+        <div className="space-y-2 rounded-2xl border border-border bg-surface-2 p-4 text-sm text-muted-foreground">
+          <p className="font-semibold text-foreground">Demo access controls</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-secondary w-full sm:w-auto" onClick={() => setLevel('early')}>
+              Simulate Early Access
+            </button>
+            <button type="button" className="btn-primary w-full sm:w-auto" onClick={() => setLevel('full')}>
+              Simulate Full Access
+            </button>
+          </div>
+          <p className="text-xs text-subtle">Current access: {level}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,30 +1,30 @@
-'use client';
+﻿'use client';
 import { useState } from 'react';
 
 export default function AnalysisPreview() {
   const [activeTab, setActiveTab] = useState(0);
 
   const features = [
-    { title: 'Visual Hierarchy & Layout', icon: '📐' },
-    { title: 'CTA Placement & Clarity', icon: '🎯' },
-    { title: 'Copy Readability & Tone', icon: '📝' },
-    { title: 'Visual Distractions & Focus', icon: '👀' },
-    { title: 'Friction Points & Flow', icon: '⚡' },
+    { title: 'Visual Hierarchy & Layout', icon: '≡ƒôÉ' },
+    { title: 'CTA Placement & Clarity', icon: '≡ƒÄ»' },
+    { title: 'Copy Readability & Tone', icon: '≡ƒô¥' },
+    { title: 'Visual Distractions & Focus', icon: '≡ƒæÇ' },
+    { title: 'Friction Points & Flow', icon: 'ΓÜí' },
   ];
 
   return (
     <section className="py-24">
-      <div className="section-container">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent to-accent-deep p-8 text-primary-foreground shadow-2xl md:p-12 lg:p-16">
+      <div className="section-container px-4 sm:px-6">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent to-accent-deep p-6 text-primary-foreground shadow-2xl md:p-12 lg:p-16">
            {/* Background noise/grid pattern could go here */}
            
-           <div className="grid gap-12 lg:grid-cols-2 lg:gap-20 items-center">
-              <div>
+           <div className="grid gap-10 lg:grid-cols-2 lg:gap-20 items-center">
+              <div className="w-full min-w-0">
                  <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">
                    We analyze what matters most.
                  </h2>
                  <p className="text-primary-foreground/80 text-lg mb-8 max-w-lg">
-                   {`Our AI doesn't just look for bugs. It evaluates the psychology and visual elements that drive user behavior.`}
+                   {`We don't just look for bugs. We evaluate psychology and visual elements that drive user behavior.`}
                  </p>
                  
                  <div className="space-y-3">
@@ -43,7 +43,7 @@ export default function AnalysisPreview() {
                  </div>
               </div>
               
-              <div className="bg-primary-foreground/10 rounded-2xl p-6 border border-primary-foreground/20 backdrop-blur-md shadow-2xl skew-y-1 transform transition-all duration-500 hover:skew-y-0">
+              <div className="bg-primary-foreground/10 rounded-2xl p-6 border border-primary-foreground/20 backdrop-blur-md shadow-2xl skew-y-1 transform transition-all duration-500 hover:skew-y-0 w-full min-w-0">
                  <div className="flex items-center justify-between mb-6">
                     <div>
                        <div className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/80">Overall Score</div>

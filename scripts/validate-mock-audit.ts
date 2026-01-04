@@ -1,5 +1,5 @@
 ﻿import { readFileSync } from 'node:fs';
-import { AuditResultSchema } from '../src/shared/validation/schema';
+import { AuditResultSchema } from '../src/domain/entities/audit-report';
 
 const raw = readFileSync(new URL('../fixtures/mock-audit.json', import.meta.url), 'utf-8');
 const data = JSON.parse(raw);

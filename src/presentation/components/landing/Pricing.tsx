@@ -1,9 +1,9 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 export default function Pricing() {
   return (
     <section className="py-24 bg-surface-2">
-      <div className="section-container">
+      <div className="section-container px-4 sm:px-6">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Simple, Transparent Pricing
@@ -15,7 +15,7 @@ export default function Pricing() {
 
         <div className="mx-auto grid max-w-lg gap-8 lg:max-w-4xl lg:grid-cols-2 lg:gap-12">
           {/* Card 1: Pay As You Go */}
-          <div className="flex flex-col rounded-3xl bg-card p-8 shadow-sm ring-1 ring-border xl:p-10">
+          <div className="flex flex-col rounded-3xl bg-card p-8 shadow-sm ring-1 ring-border xl:p-10 w-full">
             <h3 className="text-lg font-semibold leading-8 text-foreground">Pay As You Go</h3>
             <p className="border-b border-border/60 pb-6 text-sm leading-6 text-muted-foreground">Perfect for one-off audits</p>
             <div className="my-6">
@@ -42,7 +42,7 @@ export default function Pricing() {
           </div>
 
           {/* Card 2: Pro */}
-          <div className="relative flex flex-col rounded-3xl bg-accent/10 p-8 shadow-lg shadow-glow ring-1 ring-accent/30 xl:p-10">
+          <div className="relative flex flex-col rounded-3xl bg-accent/10 p-8 shadow-lg shadow-glow ring-1 ring-accent/30 xl:p-10 w-full">
              <div className="absolute -top-4 right-8 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground shadow-sm">
                 BEST VALUE
              </div>

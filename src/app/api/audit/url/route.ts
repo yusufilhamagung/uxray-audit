@@ -1,17 +1,21 @@
 import { z } from 'zod';
 import { checkRateLimit } from '@/shared/utils/rate-limit';
-import { jsonResponse } from '@/lib/api/response';
-import { getRequestIp } from '@/lib/api/request';
-import { PageTypeEnum } from '@/shared/validation/schema';
-import { runUrlAudit } from '@/server/audit/engine';
+import { jsonResponse } from '@/shared/utils/response';
+import { getRequestIp } from '@/shared/utils/request';
+import { PageTypeEnum } from '@/domain/entities/audit-report';
+import { AccessLevelEnum } from '@/domain/value-objects/access-level';
+import { runUrlAudit } from '@/infrastructure/audit/engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const auditUrlSchema = z.object({
-  url: z.string().min(1),
+  url: z.string().url().refine((value) => value.startsWith('http://') || value.startsWith('https://'), {
+    message: 'URL must start with http or https.'
+  }),
   page_type: PageTypeEnum,
-  optional_context: z.string().max(500).optional()
+  optional_context: z.string().max(500).optional(),
+  access_level: AccessLevelEnum.optional()
 });
 
 export async function POST(request: Request) {

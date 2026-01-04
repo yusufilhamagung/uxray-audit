@@ -1,53 +1,21 @@
-import { z } from 'zod';
-import { AuditResultSchema } from '@/shared/validation/schema';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { jsonResponse } from '@/lib/api/response';
+import { unlockFlow } from '@/application/usecases/unlockFlow';
+import { jsonResponse } from '@/shared/utils/response';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const idParsed = z.string().uuid().safeParse(params.id);
-  if (!idParsed.success) {
-    return jsonResponse(
-      { status: 'error', message: 'Audit ID tidak valid.' },
-      { status: 400 }
-    );
-  }
-
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('audits')
-    .select('*')
-    .eq('id', idParsed.data)
-    .single();
-
-  if (error || !data) {
-    return jsonResponse(
-      { status: 'error', message: 'Audit tidak ditemukan.' },
-      { status: 404 }
-    );
-  }
-
-  const resultJson = typeof data.result_json === 'string' ? JSON.parse(data.result_json) : data.result_json;
-  const parsed = AuditResultSchema.safeParse(resultJson);
-
-  if (!parsed.success) {
-    return jsonResponse(
-      { status: 'error', message: 'Data audit tersimpan rusak.' },
-      { status: 500 }
-    );
-  }
+  const { audit, result } = await unlockFlow(params.id);
 
   const payload = {
-    id: data.id,
-    created_at: data.created_at,
-    page_type: data.page_type,
-    image_url: data.image_url,
-    ux_score: data.ux_score,
-    model_used: data.model_used,
-    latency_ms: data.latency_ms,
-    result: parsed.data
+    id: audit.id,
+    created_at: audit.created_at,
+    page_type: audit.page_type,
+    image_url: audit.image_url,
+    ux_score: audit.ux_score,
+    model_used: audit.model_used,
+    latency_ms: audit.latency_ms,
+    result
   };
 
   const url = new URL(request.url);
@@ -58,12 +26,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
   });
 
   if (download) {
-    headers.set('Content-Disposition', `attachment; filename="uxaudit-${data.id}.json"`);
+    headers.set('Content-Disposition', `attachment; filename="uxray-${payload.id}.json"`);
     return new Response(JSON.stringify(payload, null, 2), { headers });
   }
 
   return jsonResponse(
-    { status: 'success', message: 'Audit berhasil dimuat.', data: payload },
+    { status: 'success', message: 'Audit loaded.', data: payload },
     { headers }
   );
 }

@@ -1,0 +1,54 @@
+{
+  "id": "c6509249-d3bd-4d89-bdda-ff6737937b8c",
+  "page_type": "Landing",
+  "image_url": "/audits/2026-01-04/c6509249-d3bd-4d89-bdda-ff6737937b8c.png",
+  "ux_score": 66,
+  "result_json": {
+    "analysis_state": "l2",
+    "ux_score": 66,
+    "score_breakdown": {
+      "Visual Hierarchy": 66,
+      "CTA & Conversion": 60,
+      "Copy Clarity": 66,
+      "Layout & Spacing": 66,
+      "Accessibility": 66
+    },
+    "summary": {
+      "top_3_priorities": [
+        "Issue: Unclear value proposition | Why it hurts: It's hard to tell what this page is offering at a glance. | Impact: Conversion",
+        "UXRay Quick Insight keeps the findings focused on what matters most.",
+        "UXRay Quick Insight keeps the findings focused on what matters most."
+      ],
+      "overall_notes": "UXRay Quick Insight. We're refining our analysis engine."
+    },
+    "issues": [
+      {
+        "title": "Unclear value proposition",
+        "severity": "High",
+        "category": "CTA & Conversion",
+        "problem": "It's hard to tell what this page is offering at a glance.",
+        "evidence": "If the offer is unclear, people hesitate before taking action.",
+        "recommendation_steps": [
+          "State the main benefit in one short line near the top."
+        ],
+        "expected_impact": "More people take action without hesitation.",
+        "impact": "Conversion"
+      }
+    ],
+    "quick_wins": [
+      {
+        "title": "Quick win 1: Unclear value proposition",
+        "action": "State the main benefit in one short line near the top.",
+        "expected_impact": "More people take action without hesitation."
+      }
+    ],
+    "next_steps": [
+      "Address \"Unclear value proposition\" to improve conversion and keep visitors moving.",
+      "Review the hero message to keep the benefit crystal clear."
+    ],
+    "why_this_matters": "UXRay Quick Insight. We're refining our analysis engine."
+  },
+  "model_used": "baseline",
+  "latency_ms": 1,
+  "created_at": "2026-01-04T18:40:16.305Z"
+}

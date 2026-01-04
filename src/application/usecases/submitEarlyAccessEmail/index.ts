@@ -1,0 +1,1 @@
+export { submitEarlyAccessEmail } from './saveEmail';
