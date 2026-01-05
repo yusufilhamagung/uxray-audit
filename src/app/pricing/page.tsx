@@ -4,6 +4,7 @@ import Link from 'next/link';
 import PricingPageClient from './PricingPageClient';
 import { EARLY_ACCESS_PAGE_COPY } from '@config/copy';
 import { ACCESS_SIMULATION_NOTE } from '@/presentation/copy';
+import { clientEnv } from '@/infrastructure/env/client';
 
 type PricingPageProps = {
   searchParams?: {
@@ -16,7 +17,7 @@ type PricingPageProps = {
 export default function PricingPage({ searchParams }: PricingPageProps) {
   const source = typeof searchParams?.from === 'string' ? searchParams.from : undefined;
   const auditId = typeof searchParams?.id === 'string' ? searchParams.id : undefined;
-  const demoEnabled = searchParams?.demo === '1' || process.env.NEXT_PUBLIC_DEMO_MODE === '1';
+  const demoEnabled = searchParams?.demo === '1' || clientEnv.demoMode;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -48,8 +49,14 @@ export default function PricingPage({ searchParams }: PricingPageProps) {
             </div>
 
             <div className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-              <p className="text-sm font-semibold text-foreground">No payment required - early access only.</p>
-              <p className="mt-3 text-sm text-muted-foreground">{EARLY_ACCESS_PAGE_COPY.softUpgrade}</p>
+              <p className="text-sm font-semibold text-foreground">
+                {demoEnabled ? 'Demo payments only.' : 'No payment required for early access.'}
+              </p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {demoEnabled
+                  ? 'Choose a payment method after you submit your email.'
+                  : EARLY_ACCESS_PAGE_COPY.softUpgrade}
+              </p>
             </div>
           </div>
 

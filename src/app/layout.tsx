@@ -12,7 +12,7 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: 'UXRay',
-  description: 'Upload one screenshot. Get UX clarity in seconds.'
+  description: 'Upload one screenshot. Get clear fixes in seconds.'
 };
 
 // NOTE: no "system" anymore. Only 'light' | 'dark'.

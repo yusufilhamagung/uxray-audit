@@ -55,12 +55,12 @@ export default function Hero() {
             Your website looks <span className="text-primary">fine</span>.
             <br />
             <span className="bg-gradient-to-r from-primary to-accent-deep bg-clip-text text-transparent">
-              {`But why isn't it converting?`}
+              {`But why aren't visitors taking action?`}
             </span>
           </h1>
           
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            {`Analyze your website's UX instantly. Get actionable insights and clear improvement steps in under 2 minutes. No consultants, no progress bars (actually, maybe some).`}
+            {`Analyze your page instantly. Get clear improvement steps in under 2 minutes. No consultants, no progress bars (actually, maybe some).`}
           </p>
           
           <div className="flex flex-col items-center gap-4 w-full">
@@ -96,7 +96,7 @@ export default function Hero() {
                       />
                   </div>
                   <Link href={{ pathname: '/audit', query: { url: heroUrl } }} className="btn-primary w-full sm:w-auto text-center whitespace-nowrap">
-                    Audit Now
+                    Analyze
                   </Link>
                 </div>
              )}

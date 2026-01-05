@@ -5,11 +5,11 @@ export default function AnalysisPreview() {
   const [activeTab, setActiveTab] = useState(0);
 
   const features = [
-    { title: 'Visual Hierarchy & Layout', icon: '≡ƒôÉ' },
-    { title: 'CTA Placement & Clarity', icon: '≡ƒÄ»' },
-    { title: 'Copy Readability & Tone', icon: '≡ƒô¥' },
-    { title: 'Visual Distractions & Focus', icon: '≡ƒæÇ' },
-    { title: 'Friction Points & Flow', icon: 'ΓÜí' },
+    { title: 'Layout and focus', icon: '≡ƒôÉ' },
+    { title: 'Main button clarity', icon: '≡ƒÄ»' },
+    { title: 'Copy clarity', icon: '≡ƒô¥' },
+    { title: 'Distractions', icon: '≡ƒæÇ' },
+    { title: 'Slow points', icon: 'ΓÜí' },
   ];
 
   return (
@@ -21,10 +21,10 @@ export default function AnalysisPreview() {
            <div className="grid gap-10 lg:grid-cols-2 lg:gap-20 items-center">
               <div className="w-full min-w-0">
                  <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">
-                   We analyze what matters most.
+                   We focus on what matters most.
                  </h2>
                  <p className="text-primary-foreground/80 text-lg mb-8 max-w-lg">
-                   {`We don't just look for bugs. We evaluate psychology and visual elements that drive user behavior.`}
+                   {`We do not just look for bugs. We point out what makes people pause or move forward.`}
                  </p>
                  
                  <div className="space-y-3">
@@ -57,11 +57,11 @@ export default function AnalysisPreview() {
                  <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-status-error/15 border border-status-error/30">
                        <div className="text-xs font-bold text-primary-foreground/80 uppercase mb-1">High Priority</div>
-                       <div className="text-sm font-medium text-primary-foreground">Primary CTA lacks contrast against hero background.</div>
+                       <div className="text-sm font-medium text-primary-foreground">Main button blends into the top section.</div>
                     </div>
                     <div className="p-4 rounded-xl bg-status-warning/15 border border-status-warning/30">
                        <div className="text-xs font-bold text-primary-foreground/80 uppercase mb-1">Medium Priority</div>
-                       <div className="text-sm font-medium text-primary-foreground">Value proposition text is too dense for scanning.</div>
+                       <div className="text-sm font-medium text-primary-foreground">Top message is too dense to scan.</div>
                     </div>
                  </div>
                  

@@ -10,7 +10,7 @@ export default function FinalCTA() {
       
       <div className="section-container relative z-10 text-center">
          <h2 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl mb-6">
-           Fix your UX before you <br className="hidden sm:block" />
+           Fix your page before you <br className="hidden sm:block" />
            <span className="text-accent">spend another dollar on ads.</span>
          </h2>
          <p className="mx-auto max-w-xl text-lg text-muted-foreground mb-10">
@@ -18,7 +18,7 @@ export default function FinalCTA() {
          </p>
          
          <Link href="/audit" className="btn-primary text-lg px-8 py-4 shadow-xl shadow-glow">
-            Run My UX Audit
+            Run My Audit
          </Link>
       </div>
     </section>

@@ -139,7 +139,18 @@ SUPABASE_SERVICE_ROLE_KEY=service-role-key...
 
 # Feature Flags
 AI_MOCK_MODE=false # Set to true to save credits dev
+NEXT_PUBLIC_DEMO_MODE=true
 ```
+
+### 3a. Demo Mode
+When `NEXT_PUBLIC_DEMO_MODE=true`, the app runs in demo mode:
+- Audit results come from deterministic demo scenarios (no live analysis calls).
+- URL inputs map to scenarios by keywords (shop, pricing, checkout, signup, docs, blog).
+- Screenshot inputs map by filename keywords; otherwise fall back to Scenario #1.
+- Simulated payments are UI-only and set access state (`free`, `early_access`, `full`).
+- State is saved in localStorage (`uxray_demo_access`, `uxray_demo_scenario`).
+
+Set `NEXT_PUBLIC_DEMO_MODE=false` to use the real audit path.
 
 ### 4. Run Locally
 

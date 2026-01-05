@@ -8,6 +8,9 @@ import { getRequestIp } from '@/shared/utils/request';
 import { PageTypeEnum } from '@/domain/entities/audit-report';
 import { AccessLevelEnum } from '@/domain/value-objects/access-level';
 import { getAuditLockState } from '@/domain/rules/access-gating';
+import { serverEnv } from '@/infrastructure/env/server';
+import { selectScenarioByFilename } from '@/domain/demo/demoSelection';
+import { buildDemoAuditPayload } from '@/domain/demo/demoAudit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,6 +68,19 @@ export async function POST(request: Request) {
   }
 
   const resolvedAccessLevel = parsed.data.accessLevel ?? 'free';
+
+  if (serverEnv.demoMode) {
+    const scenario = selectScenarioByFilename(file.name);
+    const demoPayload = buildDemoAuditPayload(scenario, resolvedAccessLevel, '');
+    return jsonResponse(
+      {
+        status: 'success',
+        message: 'Audit created.',
+        data: demoPayload
+      },
+      { status: 200 }
+    );
+  }
 
   try {
     const result = await generateAudit.execute({

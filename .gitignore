@@ -3,7 +3,8 @@ node_modules/
 out/
 .next/cache/
 tests/
-docs/
+docs/*
+!docs/demo-checklist.md
 data/
 public/
 scripts/

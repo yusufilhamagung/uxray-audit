@@ -160,7 +160,7 @@ const buildPriorityLines = (issues: AuditReport['issues']) => {
     return `Issue: ${issue.title} | Why it hurts: ${issue.problem} | Impact: ${issue.impact}`;
   });
   while (lines.length < 3) {
-    lines.push('UXRay Quick Insight keeps the findings focused on what matters most.');
+    lines.push('Quick Insight keeps the findings focused on what matters most.');
   }
   return lines as [string, string, string];
 };
@@ -169,10 +169,10 @@ const buildSummary = (issues: AuditReport['issues'], state: AnalysisState) => ({
   top_3_priorities: buildPriorityLines(issues),
   overall_notes:
     state === 'l2'
-      ? "UXRay Quick Insight. We're refining our analysis engine."
+      ? "Quick Insight. We're refining this report."
       : state === 'l3'
-      ? "UXRay Quick Insight. We're refining our analysis engine."
-      : 'Small confusions in hero, message, or CTA slow decision-making. Fixing them keeps people moving through the page.'
+      ? "Quick Insight. We're refining this report."
+      : 'Small confusions in the top section, message, or main button slow decisions. Fixing them keeps people moving.'
 });
 
 const buildQuickWins = (issues: AuditReport['issues']) => {
@@ -186,7 +186,7 @@ const buildQuickWins = (issues: AuditReport['issues']) => {
     wins.push({
       title: 'Quick win: Highlight main action',
       action: 'Make the primary button more visible and reduce clutter nearby.',
-      expected_impact: 'Conversion depends on a clear click target.'
+      expected_impact: 'People act faster with a clear click target.'
     });
   }
 
@@ -200,7 +200,7 @@ const buildNextSteps = (issues: AuditReport['issues']) => {
   );
 
   while (steps.length < 2) {
-    steps.push('Review the hero message to keep the benefit crystal clear.');
+    steps.push('Review the top message to keep the benefit clear.');
   }
 
   if (steps.length > 3) {
@@ -233,7 +233,7 @@ const buildScoreBreakdown = (uxScore: number, issues: AuditReport['issues']) => 
 
 const buildWhyThisMatters = (issues: AuditReport['issues'], state: AnalysisState) => {
   if (state === 'l2' || state === 'l3') {
-    return "UXRay Quick Insight. We're refining our analysis engine.";
+    return "Quick Insight. We're refining this report.";
   }
   const messages = Array.from(
     new Set(

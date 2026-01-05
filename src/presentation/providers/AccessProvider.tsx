@@ -7,6 +7,7 @@ import {
   hasFullAccess,
   subscribeFullAccess
 } from '@/infrastructure/access/sessionAccess';
+import { clientEnv } from '@/infrastructure/env/client';
 
 type AccessContextValue = {
   level: AccessLevel;
@@ -20,29 +21,31 @@ const AccessContext = createContext<AccessContextValue | undefined>(undefined);
 export function AccessProvider({ children }: { children: React.ReactNode }) {
   const [level, setLevelState] = useState<AccessLevel>('free');
   const [sessionFull, setSessionFull] = useState(false);
+  const demoMode = clientEnv.demoMode;
 
   useEffect(() => {
     setLevelState(getAccessLevel());
   }, []);
 
   useEffect(() => {
+    if (demoMode) return;
     const syncSession = () => setSessionFull(hasFullAccess());
     syncSession();
     return subscribeFullAccess(syncSession);
-  }, []);
+  }, [demoMode]);
 
   const setLevel = (next: AccessLevel) => {
     setLevelState(next);
     setAccessLevel(next);
   };
 
-  const effectiveLevel: AccessLevel = sessionFull ? 'full' : level;
+  const effectiveLevel: AccessLevel = demoMode ? level : sessionFull ? 'full' : level;
 
   const value = useMemo<AccessContextValue>(
     () => ({
       level: effectiveLevel,
       setLevel,
-      isEarly: effectiveLevel === 'early',
+      isEarly: effectiveLevel === 'early_access',
       isFull: effectiveLevel === 'full'
     }),
     [effectiveLevel]

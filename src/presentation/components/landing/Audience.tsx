@@ -3,12 +3,12 @@
     {
       role: 'Founders',
       company: 'Building Creating Ltd.',
-      desc: 'Focus on shipping, not nitpicking pixels. Fix professional debt faster without hiring a designer.',
+      desc: 'Focus on shipping, not nitpicking pixels. Fix rough edges faster without hiring a designer.',
     },
     {
       role: 'Marketers',
       company: 'Campaign Optimization',
-      desc: 'Uncover why your landing pages perform poorly. Get specific edits to supercharge conversion.',
+      desc: 'Uncover why your landing pages underperform. Get specific edits that help people take action.',
     },
     {
       role: 'Freelancers',
@@ -24,7 +24,7 @@
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Who needs UXRay?
           </h2>
-          <p className="mt-4 text-muted-foreground">Built for teams that move fast and convert quality.</p>
+          <p className="mt-4 text-muted-foreground">Built for teams that move fast and need clear actions.</p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-3">

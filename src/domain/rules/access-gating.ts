@@ -40,12 +40,12 @@ export const getAuditLockState = (level: AccessLevel): AuditLockState => {
     };
   }
 
-  if (level === 'early') {
+  if (level === 'early_access') {
     return {
       level,
       canViewDetails: true,
       canViewFull: false,
-      showLockedCta: false
+      showLockedCta: true
     };
   }
 

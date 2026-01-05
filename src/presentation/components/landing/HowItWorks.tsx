@@ -3,17 +3,17 @@
     {
       num: '01',
       title: 'Upload Screenshot',
-      desc: 'Or paste your URL. We visualize your site through a user lens.',
+      desc: 'Or paste your link. We capture the page so you can review it.',
     },
     {
       num: '02',
       title: 'Instant Review',
-      desc: 'We scan for contrast, hierarchy errors, and common UX pitfalls.',
+      desc: 'We scan for clarity issues, missing cues, and crowded layouts.',
     },
     {
       num: '03',
       title: 'Get Results',
-      desc: 'Receive a prioritized list of fixes that increase your conversion clarity.',
+      desc: 'Receive a short list of fixes that make the next step clear.',
     },
   ];
 
@@ -25,7 +25,7 @@
              Three simple steps
            </div>
            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-             From screenshot to strategy in minutes
+             From screenshot to clear next steps in minutes
            </h2>
         </div>
 
