@@ -5,6 +5,9 @@ import { getRequestIp } from '@/shared/utils/request';
 import { PageTypeEnum } from '@/domain/entities/audit-report';
 import { AccessLevelEnum } from '@/domain/value-objects/access-level';
 import { runUrlAudit } from '@/infrastructure/audit/engine';
+import { serverEnv } from '@/infrastructure/env/server';
+import { selectScenarioByUrl } from '@/domain/demo/demoSelection';
+import { buildDemoAuditPayload } from '@/domain/demo/demoAudit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,6 +39,20 @@ export async function POST(request: Request) {
     return jsonResponse(
       { status: 'error', message: 'Please provide a valid URL and page type.' },
       { status: 400 }
+    );
+  }
+
+  if (serverEnv.demoMode) {
+    const accessLevel = parsed.data.access_level ?? 'free';
+    const scenario = selectScenarioByUrl(parsed.data.url);
+    const demoPayload = buildDemoAuditPayload(scenario, accessLevel, '');
+    return jsonResponse(
+      {
+        status: 'success',
+        message: 'Audit created.',
+        data: demoPayload
+      },
+      { status: 200 }
     );
   }
 

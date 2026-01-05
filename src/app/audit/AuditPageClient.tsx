@@ -7,11 +7,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SeverityBadge } from '@/presentation/components/SeverityBadge';
 import ThemeSwitcher from '@/presentation/components/ThemeSwitcher';
 import type { AuditReport as AuditResult, Category, PageType } from '@/shared/types/audit';
+import type { AccessLevel } from '@/shared/types/access';
 import type { ApiResponse } from '@/shared/types/api';
 import { logClientEvent } from '@/infrastructure/analytics/client';
 import { LOCKED_REPORT_COPY } from '@config/copy';
 import { useAccess } from '@/presentation/providers/AccessProvider';
 import { buildAuditAccessView, type AuditLockState } from '@/domain/rules/access-gating';
+import { clientEnv } from '@/infrastructure/env/client';
+import { clearDemoScenarioId, readDemoScenarioId, writeDemoScenarioId } from '@/domain/demo/demoStorage';
 
 const pageTypes: PageType[] = ['Landing', 'App', 'Dashboard'];
 const scoreCategories: Category[] = [
@@ -23,11 +26,11 @@ const scoreCategories: Category[] = [
 ];
 
 const loadingMessages = [
-  'Menyiapkan audit UX kamu...',
-  'Menganalisis hierarki visual...',
-  'Mengukur konversi dan CTA...',
-  'Merangkum quick wins...',
-  'Finalisasi skor UX...'
+  'Menyiapkan audit halamanmu...',
+  'Memeriksa fokus visual...',
+  'Mengecek tombol utama...',
+  'Merangkum perbaikan cepat...',
+  'Menyiapkan ringkasan skor...'
 ];
 
 const previewImageLoader: ImageLoader = ({ src }) => src;
@@ -59,6 +62,7 @@ type LockedReportSectionProps = {
   lockedIssues: AuditResult['issues'];
   lockedQuickWins: AuditResult['quick_wins'];
   auditId: string | null;
+  accessLevel: AccessLevel;
   onUnlockClick: () => void;
 };
 
@@ -93,18 +97,28 @@ const LockedReportSection = memo(function LockedReportSection({
   lockedIssues,
   lockedQuickWins,
   auditId,
+  accessLevel,
   onUnlockClick
 }: LockedReportSectionProps) {
   const pricingHref = auditId ? `/pricing?from=audit&id=${auditId}` : '/pricing?from=audit';
   const copy = LOCKED_REPORT_COPY;
+  const isEarlyAccess = accessLevel === 'early_access';
+  const overlayCopy = isEarlyAccess
+    ? "You're on the list. Unlock to see the full report."
+    : copy.microcopy;
 
   return (
     <div className="card p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Full Report (Early Access)</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Full Report</p>
           <h3 className="mt-2 text-lg font-semibold text-foreground">{copy.headline}</h3>
           <p className="mt-2 text-sm text-muted-foreground">{copy.subheadline}</p>
+          {isEarlyAccess && (
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+              You&apos;re on the list
+            </p>
+          )}
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             {copy.bullets.map((bullet) => (
               <li key={bullet} className="flex items-start gap-2">
@@ -189,7 +203,7 @@ const LockedReportSection = memo(function LockedReportSection({
               />
             </svg>
           </div>
-          <p className="text-sm font-semibold text-foreground">{copy.microcopy}</p>
+          <p className="text-sm font-semibold text-foreground">{overlayCopy}</p>
           <Link
             href={pricingHref}
             className="btn-primary w-full max-w-[220px] text-center"
@@ -222,7 +236,9 @@ export default function AuditPageClient() {
   const [freeInsightReady, setFreeInsightReady] = useState(false);
   const [insightConsumed, setInsightConsumed] = useState(false);
   const whyThisMattersRef = useRef<HTMLParagraphElement | null>(null);
-  const { level: accessLevel } = useAccess();
+  const lastLoadedAccessRef = useRef<AccessLevel | null>(null);
+  const { level: accessLevel, setLevel: setAccessLevel } = useAccess();
+  const demoMode = clientEnv.demoMode;
   const accessView = useMemo(
     () => (result ? buildAuditAccessView(result, accessLevel) : null),
     [result, accessLevel]
@@ -250,7 +266,58 @@ export default function AuditPageClient() {
     setInsightConsumed(false);
     setLoading(false);
     setLoadingMessage(loadingMessages[0]);
+    lastLoadedAccessRef.current = null;
   }, []);
+
+  const loadAuditById = useCallback(
+    (id: string) => {
+      setLoading(true);
+      setLoadingMessage('Memuat hasil audit...');
+      fetch(`/api/audit/${encodeURIComponent(id)}?access_level=${accessLevel}`)
+        .then(async (res) => {
+          const payload = (await res.json()) as ApiResponse<AuditFetchData>;
+          if (!res.ok) {
+            throw new Error(payload?.message || 'Audit unavailable');
+          }
+          return payload;
+        })
+        .then((payload) => {
+          if (!payload.data) throw new Error('Audit data missing.');
+          setResult(sanitizeAuditResult(payload.data.result));
+          setAuditId(payload.data.id);
+          setModelUsed(payload.data.model_used);
+          setLatencyMs(payload.data.latency_ms);
+          setPreviewUrl(payload.data.image_url || null);
+          setFreeInsightReady(true);
+          setInsightConsumed(false);
+          lastLoadedAccessRef.current = accessLevel;
+          if (demoMode) {
+            writeDemoScenarioId(payload.data.id);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setError('Gagal memuat hasil audit lama.');
+        })
+        .finally(() => setLoading(false));
+    },
+    [accessLevel, demoMode]
+  );
+
+  const handleRunAnotherAudit = useCallback(() => {
+    if (demoMode) {
+      clearDemoScenarioId();
+    }
+    resetAuditForm();
+    router.push('/audit?new=1');
+  }, [demoMode, resetAuditForm, router]);
+
+  const handleResetDemo = useCallback(() => {
+    clearDemoScenarioId();
+    setAccessLevel('free');
+    resetAuditForm();
+    router.push('/audit?new=1');
+  }, [resetAuditForm, router, setAccessLevel]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
@@ -267,40 +334,37 @@ export default function AuditPageClient() {
 
     const idParam = searchParams.get('id');
     if (idParam) {
-      setLoading(true);
-      setLoadingMessage('Memuat hasil audit...');
-      fetch(`/api/audit/${idParam}`)
-        .then(async (res) => {
-          const payload = (await res.json()) as ApiResponse<AuditFetchData>;
-          if (!res.ok) {
-            throw new Error(payload?.message || 'Audit unavailable');
-          }
-          return payload;
-        })
-        .then((payload) => {
-          if (!payload.data) throw new Error('Audit data missing.');
-          setResult(sanitizeAuditResult(payload.data.result));
-          setAuditId(payload.data.id);
-          setModelUsed(payload.data.model_used);
-          setLatencyMs(payload.data.latency_ms);
-          setPreviewUrl(payload.data.image_url);
-          setFreeInsightReady(true);
-          setInsightConsumed(false);
-        })
-        .catch((err) => {
-          console.error(err);
-          setError('Gagal memuat hasil audit lama.');
-        })
-        .finally(() => setLoading(false));
+      loadAuditById(idParam);
     }
-  }, [searchParams]);
+  }, [searchParams, loadAuditById]);
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
+      if (demoMode) {
+        clearDemoScenarioId();
+      }
       resetAuditForm();
       router.replace('/audit');
     }
-  }, [searchParams, resetAuditForm, router]);
+  }, [demoMode, searchParams, resetAuditForm, router]);
+
+  useEffect(() => {
+    if (!demoMode) return;
+    if (searchParams.get('id')) return;
+    if (result || loading) return;
+    const storedScenario = readDemoScenarioId();
+    if (storedScenario) {
+      loadAuditById(storedScenario);
+    }
+  }, [demoMode, loadAuditById, loading, result, searchParams]);
+
+  useEffect(() => {
+    if (!demoMode) return;
+    if (!auditId) return;
+    if (!result) return;
+    if (lastLoadedAccessRef.current === accessLevel) return;
+    loadAuditById(auditId);
+  }, [accessLevel, auditId, demoMode, loadAuditById, result]);
 
   useEffect(() => {
     if (inputMode === 'url') {
@@ -450,6 +514,7 @@ export default function AuditPageClient() {
       setModelUsed(payload.data.model_used);
       setLatencyMs(payload.data.latency_ms);
       setFreeInsightReady(true);
+      lastLoadedAccessRef.current = accessLevel;
       logClientEvent('audit_completed', {
         audit_id: payload.data.audit_id,
         analysis_state: payload.data.result.analysis_state,
@@ -458,6 +523,9 @@ export default function AuditPageClient() {
 
       if (payload.data.image_url) {
         setPreviewUrl(payload.data.image_url);
+      }
+      if (demoMode) {
+        writeDemoScenarioId(payload.data.audit_id);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses audit.';
@@ -484,7 +552,7 @@ export default function AuditPageClient() {
         <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXRay</p>
-          <h1 className="text-3xl font-semibold text-foreground">Audit UX</h1>
+          <h1 className="text-3xl font-semibold text-foreground">Audit Page</h1>
         </div>
           <div className="flex items-center gap-3">
             <ThemeSwitcher />
@@ -547,7 +615,7 @@ export default function AuditPageClient() {
 
             {inputMode === 'url' && (
               <div>
-                <label className="text-sm font-semibold text-foreground">URL Website</label>
+                <label className="text-sm font-semibold text-foreground">Paste a link</label>
                 <div className="mt-2">
                   <input
                     type="url"
@@ -614,17 +682,29 @@ export default function AuditPageClient() {
                 className="btn-primary"
                 disabled={loading}
               >
-                {loading ? 'Sedang Audit...' : 'Generate Audit'}
+                {loading ? 'Analyzing...' : 'Analyze'}
               </button>
               {result && (
-                <button
-                  type="button"
-                  onClick={resetAuditForm}
-                  className="btn-secondary"
-                  disabled={loading}
-                >
-                  Audit lagi
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleRunAnotherAudit}
+                    className="btn-secondary"
+                    disabled={loading}
+                  >
+                    Run Another Audit
+                  </button>
+                  {demoMode && (
+                    <button
+                      type="button"
+                      onClick={handleResetDemo}
+                      className="btn-secondary"
+                      disabled={loading}
+                    >
+                      Reset Demo
+                    </button>
+                  )}
+                </>
               )}
               <p className="text-xs text-muted-foreground">Estimasi 10-30 detik.</p>
             </div>
@@ -668,14 +748,17 @@ export default function AuditPageClient() {
           <section className="mt-12 space-y-8">
             <div className="card grid gap-6 p-6 lg:grid-cols-[0.9fr_1.1fr]">
               <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UX Score</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Page Score</p>
                 <div className="text-5xl font-semibold text-foreground">{result.ux_score}</div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={handleDownloadJson} className="btn-secondary">
                     Download Report (JSON)
                   </button>
                   {auditId && (
-                    <a href={`/api/audit/${auditId}/report`} className="btn-secondary">
+                    <a
+                      href={`/api/audit/${auditId}/report?access_level=${accessLevel}`}
+                      className="btn-secondary"
+                    >
                       Download Report (HTML)
                     </a>
                   )}
@@ -712,13 +795,14 @@ export default function AuditPageClient() {
               ))}
             </div>
 
-            {insightConsumed && accessView?.lockState.showLockedCta && (
+            {accessView?.lockState.showLockedCta && (
               <LockedReportSection
                 teaserIssues={teaserIssues}
                 teaserQuickWins={teaserQuickWins}
                 lockedIssues={lockedIssues}
                 lockedQuickWins={lockedQuickWins}
                 auditId={auditId}
+                accessLevel={accessLevel}
                 onUnlockClick={() => {
                   logClientEvent('unlock_clicked', { audit_id: auditId });
                 }}

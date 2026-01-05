@@ -21,6 +21,7 @@ const serverEnvSchema = z.object({
   AI_API_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   AI_MODEL: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   AI_MOCK_MODE: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).optional()),
+  NEXT_PUBLIC_DEMO_MODE: z.preprocess(emptyToUndefined, z.enum(['true', 'false', '1', '0']).optional()),
   PUPPETEER_EXECUTABLE_PATH: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   CHROME_EXECUTABLE_PATH: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   AUDIT_WORKER_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
@@ -37,13 +38,16 @@ if (!parsed.success) {
 }
 
 const raw = parsed.success ? parsed.data : {};
+const demoModeFallback = isProd ? 'true' : 'false';
+const demoModeValue = raw.NEXT_PUBLIC_DEMO_MODE ?? demoModeFallback;
+const demoMode = demoModeValue === 'true' || demoModeValue === '1';
 const aiMockMode = (raw.AI_MOCK_MODE ?? 'false') === 'true';
 const supabaseUrl = raw.SUPABASE_URL ?? raw.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = raw.SUPABASE_ANON_KEY ?? raw.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 const supabaseServiceRoleKey = raw.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
 const missingInProd: string[] = [];
-if (isProd) {
+if (isProd && !demoMode) {
   if (!supabaseUrl) missingInProd.push('SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL');
   if (!supabaseAnonKey && !supabaseServiceRoleKey) {
     missingInProd.push('SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY');
@@ -69,6 +73,7 @@ export const serverEnv = {
   aiApiUrl: raw.GEMINI_URL ?? raw.AI_API_URL ?? 'https://generativelanguage.googleapis.com/v1beta/models',
   aiModel: raw.GEMINI_MODEL ?? raw.AI_MODEL ?? 'gemini-2.5-flash',
   aiMockMode,
+  demoMode,
   isSupabaseConfigured: Boolean(supabaseUrl && (supabaseServiceRoleKey || supabaseAnonKey)),
   puppeteerExecutablePath: raw.PUPPETEER_EXECUTABLE_PATH,
   chromeExecutablePath: raw.CHROME_EXECUTABLE_PATH,

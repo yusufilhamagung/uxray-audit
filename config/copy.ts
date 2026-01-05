@@ -1,32 +1,32 @@
 export const LOCKED_REPORT_COPY = {
-  headline: 'Stop Guessing. Get UX Clarity.',
-  subheadline: 'Turn one screenshot into a clear action plan.',
+  headline: 'Unlock the full report.',
+  subheadline: 'See the full list of issues and fixes for this page.',
   bullets: [
-    'Priority UX issues (what to fix first)',
-    'Clear fix suggestions (no jargon)',
-    'Copy & CTA improvement ideas'
+    'Top issues to fix first',
+    'Clear steps for each issue',
+    'Quick wins and next steps'
   ],
-  cta: 'Unlock Full Report',
-  microcopy: 'No payment required - early access only'
+  cta: 'Unlock',
+  microcopy: 'Full access is locked until you unlock.'
 } as const;
 
 export const EARLY_ACCESS_COPY = {
-  headline: 'UXRay is in Early Access. Full UX reports are launching soon.',
-  cta: 'Get Early Access',
-  emailHelper: "We'll use this email to keep access to this report. No spam.",
+  headline: 'Enter your email to keep this report and join the list.',
+  cta: 'Continue',
+  emailHelper: "We'll only use this email for this report.",
   clarification:
-    'Early access unlocks insights for this audit. Creating new audits will require an upgrade later.',
-  confirmation: 'Full Report Unlocked'
+    "You're on the list. We'll notify you when full access is ready.",
+  confirmation: "You're on the list"
 } as const;
 
 export const EARLY_ACCESS_PAGE_COPY = {
-  title: 'Unlock Full UX Report',
-  subtitle: 'Get the complete UX analysis for this page and keep access to it.',
+  title: 'Unlock Full Report',
+  subtitle: 'Enter your email to keep this report and continue to full access.',
   checklist: [
-    'Full list of UX issues detected',
-    'Clear explanation for each issue',
-    'Actionable recommendations (prioritized)',
-    'Access this report anytime via email'
+    'Full list of issues for this page',
+    'Clear steps for each issue',
+    'Quick wins and next steps',
+    'Keep access to this report'
   ],
-  softUpgrade: 'Upgrade options will be available later.'
+  softUpgrade: 'Full access options will be available later.'
 } as const;
