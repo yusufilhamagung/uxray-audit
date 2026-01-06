@@ -1,5 +1,5 @@
 import type { AuditInput } from '@/domain/value-objects/audit-input';
-import { buildSystemPrompt } from '@config/prompts';
+import { buildSystemPrompt } from '@/application/usecases/analyzeFree/prompts';
 
 type GeminiPart = {
   text?: string;

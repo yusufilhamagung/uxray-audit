@@ -24,9 +24,9 @@ export default function Hero() {
     try {
         const formData = new FormData();
         formData.append('image', file);
-        formData.append('page_type', 'Landing'); // Default
-        
-        const res = await fetch('/api/audit', { method: 'POST', body: formData });
+        formData.append('page_type', 'landing'); // Default
+
+        const res = await fetch('/api/audit/free', { method: 'POST', body: formData });
         const data = (await res.json()) as ApiResponse<{ audit_id: string }>;
         
         if (!res.ok) throw new Error(data?.message || 'Gagal memproses audit.');

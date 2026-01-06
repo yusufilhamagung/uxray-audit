@@ -1,221 +1,62 @@
 ﻿'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image, { type ImageLoader } from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { SeverityBadge } from '@/presentation/components/SeverityBadge';
 import ThemeSwitcher from '@/presentation/components/ThemeSwitcher';
-import type { AuditReport as AuditResult, Category, PageType } from '@/shared/types/audit';
-import type { AccessLevel } from '@/shared/types/access';
+import LockedSection from '@/presentation/components/LockedSection';
 import type { ApiResponse } from '@/shared/types/api';
+import type { FreeAuditResult, ProAuditResult, PageType } from '@/domain/types/uxray';
+import { buildFreeFallback, buildProFallback } from '@/domain/validators/uxray';
 import { logClientEvent } from '@/infrastructure/analytics/client';
-import { LOCKED_REPORT_COPY } from '@config/copy';
-import { useAccess } from '@/presentation/providers/AccessProvider';
-import { buildAuditAccessView, type AuditLockState } from '@/domain/rules/access-gating';
-import { clientEnv } from '@/infrastructure/env/client';
-import { clearDemoScenarioId, readDemoScenarioId, writeDemoScenarioId } from '@/domain/demo/demoStorage';
+import {
+  getAuditUnlockId,
+  hasEarlyAccess as readEarlyAccess,
+  hasFullAccess as readFullAccess
+} from '@/infrastructure/storage/unlockStorage';
 
-const pageTypes: PageType[] = ['Landing', 'App', 'Dashboard'];
-const scoreCategories: Category[] = [
-  'Visual Hierarchy',
-  'CTA & Conversion',
-  'Copy Clarity',
-  'Layout & Spacing',
-  'Accessibility'
+const pageTypes: Array<{ value: PageType; label: string }> = [
+  { value: 'landing', label: 'Landing' },
+  { value: 'app', label: 'App' },
+  { value: 'dashboard', label: 'Dashboard' }
 ];
 
 const loadingMessages = [
   'Menyiapkan audit halamanmu...',
   'Memeriksa fokus visual...',
   'Mengecek tombol utama...',
-  'Merangkum perbaikan cepat...',
+  'Merangkum insight utama...',
   'Menyiapkan ringkasan skor...'
 ];
 
 const previewImageLoader: ImageLoader = ({ src }) => src;
 
-type AuditCreateData = {
+type FreeAuditResponse = {
   audit_id: string;
-  result: AuditResult;
+  result: FreeAuditResult;
   image_url: string;
   model_used: string;
   latency_ms: number;
   created_at: string;
-  lock_state?: AuditLockState;
+  page_type?: PageType;
 };
 
-type AuditFetchData = {
-  id: string;
-  created_at: string;
-  page_type: string;
-  image_url: string;
-  ux_score: number;
+type ProAuditResponse = {
+  audit_id: string;
+  result: ProAuditResult;
   model_used: string;
   latency_ms: number;
-  result: AuditResult;
 };
 
-type LockedReportSectionProps = {
-  teaserIssues: AuditResult['issues'];
-  teaserQuickWins: AuditResult['quick_wins'];
-  lockedIssues: AuditResult['issues'];
-  lockedQuickWins: AuditResult['quick_wins'];
-  auditId: string | null;
-  accessLevel: AccessLevel;
-  onUnlockClick: () => void;
-};
-
-const MODEL_LATENCY_LINE = /^Model:\s.*-\sLatency:\s\d+\sms$/i;
-
-const stripModelLatencyLine = (value: string) => {
-  const lines = value.split('\n');
-  const filtered = lines.filter((line) => !MODEL_LATENCY_LINE.test(line.trim()));
-  return filtered.join('\n');
-};
-
-const sanitizeValue = (value: unknown): unknown => {
-  if (typeof value === 'string') {
-    return stripModelLatencyLine(value);
+const isValidUrl = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
   }
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitizeValue(item));
-  }
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [key, sanitizeValue(entry)])
-    );
-  }
-  return value;
 };
-
-const sanitizeAuditResult = (value: AuditResult): AuditResult => sanitizeValue(value) as AuditResult;
-
-const LockedReportSection = memo(function LockedReportSection({
-  teaserIssues,
-  teaserQuickWins,
-  lockedIssues,
-  lockedQuickWins,
-  auditId,
-  accessLevel,
-  onUnlockClick
-}: LockedReportSectionProps) {
-  const pricingHref = auditId ? `/pricing?from=audit&id=${auditId}` : '/pricing?from=audit';
-  const copy = LOCKED_REPORT_COPY;
-  const isEarlyAccess = accessLevel === 'early_access';
-  const overlayCopy = isEarlyAccess
-    ? "You're on the list. Unlock to see the full report."
-    : copy.microcopy;
-
-  return (
-    <div className="card p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Full Report</p>
-          <h3 className="mt-2 text-lg font-semibold text-foreground">{copy.headline}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{copy.subheadline}</p>
-          {isEarlyAccess && (
-            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-              You&apos;re on the list
-            </p>
-          )}
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            {copy.bullets.map((bullet) => (
-              <li key={bullet} className="flex items-start gap-2">
-                <span className="mt-[2px] h-1.5 w-1.5 rounded-full bg-accent" />
-                <span>{bullet}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <Link
-          href={pricingHref}
-          className="btn-primary w-full sm:w-auto text-center"
-          onClick={onUnlockClick}
-        >
-          {copy.cta}
-        </Link>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-subtle">Teaser Issues</p>
-          <div className="mt-3 space-y-3">
-            {teaserIssues.length > 0 ? (
-              teaserIssues.map((issue, index) => (
-                <div key={`${issue.title}-${index}`} className="rounded-xl border border-border/60 bg-surface-2 p-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-subtle">
-                    <SeverityBadge severity={issue.severity} />
-                    <span>{issue.category}</span>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-foreground">{issue.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{issue.problem}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">Teaser issue akan muncul setelah audit selesai.</p>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-subtle">Quick Win Teaser</p>
-          <div className="mt-3 space-y-3">
-            {teaserQuickWins.length > 0 ? (
-              teaserQuickWins.map((win) => (
-                <div key={win.title} className="rounded-xl border border-accent/30 bg-accent/10 p-3">
-                  <p className="text-sm font-semibold text-foreground">{win.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{win.action}</p>
-                  <p className="mt-1 text-xs text-subtle">Impact: {win.expected_impact}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">Quick win teaser akan muncul setelah audit selesai.</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="space-y-4 p-5 blur-sm select-none">
-          {(lockedIssues.length > 0 ? lockedIssues : teaserIssues).map((issue, index) => (
-            <div key={`locked-${issue.title}-${index}`} className="rounded-xl border border-border/60 bg-surface-2 p-3">
-              <p className="text-sm font-semibold text-foreground">{issue.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{issue.recommendation_steps?.[0] ?? issue.problem}</p>
-            </div>
-          ))}
-          {(lockedQuickWins.length > 0 ? lockedQuickWins : teaserQuickWins).map((win) => (
-            <div key={`locked-${win.title}`} className="rounded-xl border border-accent/30 bg-accent/10 p-3">
-              <p className="text-sm font-semibold text-foreground">{win.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{win.action}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground/90 text-background">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 11c1.1 0 2 .9 2 2v2a2 2 0 0 1-4 0v-2c0-1.1.9-2 2-2zm5-3h-1V6a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2z"
-              />
-            </svg>
-          </div>
-          <p className="text-sm font-semibold text-foreground">{overlayCopy}</p>
-          <Link
-            href={pricingHref}
-            className="btn-primary w-full max-w-[220px] text-center"
-            onClick={onUnlockClick}
-          >
-            {copy.cta}
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-});
 
 export default function AuditPageClient() {
   const searchParams = useSearchParams();
@@ -229,26 +70,15 @@ export default function AuditPageClient() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AuditResult | null>(null);
+  const [freeResult, setFreeResult] = useState<FreeAuditResult | null>(null);
+  const [proResult, setProResult] = useState<ProAuditResult | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
-  const [modelUsed, setModelUsed] = useState<string | null>(null);
-  const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [freeInsightReady, setFreeInsightReady] = useState(false);
-  const [insightConsumed, setInsightConsumed] = useState(false);
-  const whyThisMattersRef = useRef<HTMLParagraphElement | null>(null);
-  const lastLoadedAccessRef = useRef<AccessLevel | null>(null);
-  const { level: accessLevel, setLevel: setAccessLevel } = useAccess();
-  const demoMode = clientEnv.demoMode;
-  const accessView = useMemo(
-    () => (result ? buildAuditAccessView(result, accessLevel) : null),
-    [result, accessLevel]
-  );
-  const canViewDetails = accessView?.lockState.canViewDetails ?? false;
-  const canViewFull = accessView?.lockState.canViewFull ?? false;
-  const teaserIssues = accessView?.teaser.issues ?? [];
-  const teaserQuickWins = accessView?.teaser.quickWins ?? [];
-  const lockedIssues = accessView?.locked.issues ?? [];
-  const lockedQuickWins = accessView?.locked.quickWins ?? [];
+  const [freeInsightCompleted, setFreeInsightCompleted] = useState(false);
+  const [loadingPro, setLoadingPro] = useState(false);
+  const [upgradeNotice, setUpgradeNotice] = useState<string | null>(null);
+  const [hasEarlyAccess, setHasEarlyAccess] = useState(false);
+  const [hasFullAccess, setHasFullAccess] = useState(false);
+  const freeInsightRef = useRef<HTMLDivElement | null>(null);
 
   const resetAuditForm = useCallback(() => {
     setInputMode('image');
@@ -257,73 +87,68 @@ export default function AuditPageClient() {
     setPreviewUrl(null);
     setPageType('');
     setOptionalContext('');
-    setResult(null);
+    setFreeResult(null);
+    setProResult(null);
     setAuditId(null);
-    setModelUsed(null);
-    setLatencyMs(null);
     setError(null);
-    setFreeInsightReady(false);
-    setInsightConsumed(false);
+    setFreeInsightCompleted(false);
     setLoading(false);
     setLoadingMessage(loadingMessages[0]);
-    lastLoadedAccessRef.current = null;
+    setUpgradeNotice(null);
   }, []);
 
-  const loadAuditById = useCallback(
-    (id: string) => {
-      setLoading(true);
-      setLoadingMessage('Memuat hasil audit...');
-      fetch(`/api/audit/${encodeURIComponent(id)}?access_level=${accessLevel}`)
-        .then(async (res) => {
-          const payload = (await res.json()) as ApiResponse<AuditFetchData>;
-          if (!res.ok) {
-            throw new Error(payload?.message || 'Audit unavailable');
-          }
-          return payload;
-        })
-        .then((payload) => {
-          if (!payload.data) throw new Error('Audit data missing.');
-          setResult(sanitizeAuditResult(payload.data.result));
-          setAuditId(payload.data.id);
-          setModelUsed(payload.data.model_used);
-          setLatencyMs(payload.data.latency_ms);
-          setPreviewUrl(payload.data.image_url || null);
-          setFreeInsightReady(true);
-          setInsightConsumed(false);
-          lastLoadedAccessRef.current = accessLevel;
-          if (demoMode) {
-            writeDemoScenarioId(payload.data.id);
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          setError('Gagal memuat hasil audit lama.');
-        })
-        .finally(() => setLoading(false));
-    },
-    [accessLevel, demoMode]
-  );
+  const loadAuditById = useCallback(async (id: string) => {
+    setLoading(true);
+    setLoadingMessage('Memuat hasil audit...');
+    try {
+      const response = await fetch(`/api/audit/free?id=${encodeURIComponent(id)}`);
+      const payload = (await response.json()) as ApiResponse<FreeAuditResponse>;
+      if (!response.ok || !payload.data) {
+        throw new Error(payload?.message || 'Audit unavailable');
+      }
 
-  const handleRunAnotherAudit = useCallback(() => {
-    if (demoMode) {
-      clearDemoScenarioId();
+      setFreeResult(payload.data.result);
+      setAuditId(payload.data.audit_id);
+      if (payload.data.page_type) {
+        setPageType(payload.data.page_type);
+      }
+      setPreviewUrl(payload.data.image_url || null);
+      setFreeInsightCompleted(false);
+      setProResult(null);
+    } catch (err) {
+      console.error(err);
+      setError('Gagal memuat hasil audit lama.');
+    } finally {
+      setLoading(false);
     }
-    resetAuditForm();
-    router.push('/audit?new=1');
-  }, [demoMode, resetAuditForm, router]);
+  }, []);
 
-  const handleResetDemo = useCallback(() => {
-    clearDemoScenarioId();
-    setAccessLevel('free');
-    resetAuditForm();
-    router.push('/audit?new=1');
-  }, [resetAuditForm, router, setAccessLevel]);
+  const fetchFullReport = useCallback(async (id: string, unlockId: string) => {
+    setLoadingPro(true);
+    try {
+      const response = await fetch('/api/audit/pro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auditId: id, auditUnlockId: unlockId, pageType: pageType || undefined })
+      });
+      const payload = (await response.json()) as ApiResponse<ProAuditResponse>;
+      if (!response.ok || !payload.data) {
+        throw new Error(payload?.message || 'Full report unavailable');
+      }
+      setProResult(payload.data.result);
+      logClientEvent('full_report_unlocked', { audit_id: id });
+    } catch (err) {
+      console.error(err);
+      setProResult(buildProFallback('l3', pageType || 'landing'));
+    } finally {
+      setLoadingPro(false);
+    }
+  }, [pageType]);
 
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    (window as Window & { __uxauditMeta__?: { modelUsed: string | null; latencyMs: number | null } })
-      .__uxauditMeta__ = { modelUsed, latencyMs };
-  }, [modelUsed, latencyMs]);
+    setHasEarlyAccess(readEarlyAccess());
+    setHasFullAccess(readFullAccess());
+  }, []);
 
   useEffect(() => {
     const urlParam = searchParams.get('url');
@@ -336,39 +161,15 @@ export default function AuditPageClient() {
     if (idParam) {
       loadAuditById(idParam);
     }
-  }, [searchParams, loadAuditById]);
 
-  useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      if (demoMode) {
-        clearDemoScenarioId();
-      }
-      resetAuditForm();
-      router.replace('/audit');
+    if (searchParams.get('locked') === '1') {
+      setUpgradeNotice('Upgrade required to run a new audit.');
     }
-  }, [demoMode, searchParams, resetAuditForm, router]);
-
-  useEffect(() => {
-    if (!demoMode) return;
-    if (searchParams.get('id')) return;
-    if (result || loading) return;
-    const storedScenario = readDemoScenarioId();
-    if (storedScenario) {
-      loadAuditById(storedScenario);
-    }
-  }, [demoMode, loadAuditById, loading, result, searchParams]);
-
-  useEffect(() => {
-    if (!demoMode) return;
-    if (!auditId) return;
-    if (!result) return;
-    if (lastLoadedAccessRef.current === accessLevel) return;
-    loadAuditById(auditId);
-  }, [accessLevel, auditId, demoMode, loadAuditById, result]);
+  }, [loadAuditById, searchParams]);
 
   useEffect(() => {
     if (inputMode === 'url') {
-      if (!result && !searchParams.get('id')) {
+      if (!freeResult && !searchParams.get('id')) {
         setPreviewUrl(null);
       }
       return;
@@ -381,7 +182,7 @@ export default function AuditPageClient() {
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [file, inputMode, result, searchParams]);
+  }, [file, freeResult, inputMode, searchParams]);
 
   useEffect(() => {
     if (!loading) return;
@@ -395,48 +196,52 @@ export default function AuditPageClient() {
   }, [loading]);
 
   useEffect(() => {
-    if (insightConsumed) {
-      logClientEvent('insight_scrolled_to_end', { audit_id: auditId });
-    }
-  }, [insightConsumed, auditId]);
-
+    if (!freeResult) return;
+    logClientEvent('free_insight_rendered', { audit_id: auditId, analysis_state: freeResult.analysis_state });
+  }, [auditId, freeResult]);
 
   useEffect(() => {
-    if (!freeInsightReady || insightConsumed || !whyThisMattersRef.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInsightConsumed(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.8 }
-    );
-    observer.observe(whyThisMattersRef.current);
-    return () => observer.disconnect();
-  }, [freeInsightReady, insightConsumed, result]);
+    if (!freeResult || !auditId) return;
+    const unlockId = getAuditUnlockId(auditId);
+    if (!unlockId || proResult || loadingPro) return;
+    fetchFullReport(auditId, unlockId);
+  }, [auditId, fetchFullReport, freeResult, loadingPro, proResult]);
 
-  const scoreEntries = useMemo(() => {
-    if (!result) return [];
-    return scoreCategories.map((category) => ({
-      category,
-      score: result.score_breakdown[category]
-    }));
-  }, [result]);
+  useEffect(() => {
+    if (!freeResult || freeInsightCompleted) return;
+    const container = freeInsightRef.current;
+    if (!container) return;
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    if (maxScroll <= 0) {
+      setFreeInsightCompleted(true);
+    }
+  }, [freeInsightCompleted, freeResult]);
 
-  const isValidUrl = (value: string) => {
-    try {
-      const parsed = new URL(value);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-      return false;
+  useEffect(() => {
+    if (freeInsightCompleted) {
+      logClientEvent('free_insight_completed', { audit_id: auditId });
+    }
+  }, [auditId, freeInsightCompleted]);
+
+  const handleInsightScroll = () => {
+    const container = freeInsightRef.current;
+    if (!container || freeInsightCompleted) return;
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const progress = maxScroll <= 0 ? 1 : container.scrollTop / maxScroll;
+    if (progress >= 0.92) {
+      setFreeInsightCompleted(true);
     }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     setError(null);
+    setUpgradeNotice(null);
+
+    if (hasEarlyAccess && !hasFullAccess) {
+      setUpgradeNotice('Upgrade required to run a new audit.');
+      return;
+    }
 
     if (!pageType) {
       setError('Mohon pilih tipe halaman.');
@@ -463,13 +268,11 @@ export default function AuditPageClient() {
     }
 
     logClientEvent('audit_started', { page_type: pageType, input_mode: inputMode });
-    setFreeInsightReady(false);
-    setInsightConsumed(false);
+    setFreeInsightCompleted(false);
     setLoading(true);
-    setResult(null);
+    setFreeResult(null);
+    setProResult(null);
     setAuditId(null);
-    setModelUsed(null);
-    setLatencyMs(null);
 
     try {
       let response: Response;
@@ -478,30 +281,28 @@ export default function AuditPageClient() {
         const formData = new FormData();
         formData.append('image', file as File);
         formData.append('page_type', pageType);
-        formData.append('access_level', accessLevel);
         if (trimmedContext) {
           formData.append('optional_context', trimmedContext);
         }
 
-        response = await fetch('/api/audit', {
+        response = await fetch('/api/audit/free', {
           method: 'POST',
           body: formData
         });
       } else {
         const trimmedUrl = url.trim();
-        response = await fetch('/api/audit/url', {
+        response = await fetch('/api/audit/free', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: trimmedUrl,
             page_type: pageType,
-            optional_context: trimmedContext || undefined,
-            access_level: accessLevel
+            optional_context: trimmedContext || undefined
           })
         });
       }
 
-      const payload = (await response.json()) as ApiResponse<AuditCreateData>;
+      const payload = (await response.json()) as ApiResponse<FreeAuditResponse>;
       if (!response.ok) {
         throw new Error(payload?.message || 'Gagal memproses audit.');
       }
@@ -509,51 +310,41 @@ export default function AuditPageClient() {
         throw new Error('Data audit tidak tersedia.');
       }
 
-      setResult(sanitizeAuditResult(payload.data.result));
+      setFreeResult(payload.data.result);
       setAuditId(payload.data.audit_id);
-      setModelUsed(payload.data.model_used);
-      setLatencyMs(payload.data.latency_ms);
-      setFreeInsightReady(true);
-      lastLoadedAccessRef.current = accessLevel;
-      logClientEvent('audit_completed', {
-        audit_id: payload.data.audit_id,
-        analysis_state: payload.data.result.analysis_state,
-        input_mode: inputMode
-      });
-
-      if (payload.data.image_url) {
-        setPreviewUrl(payload.data.image_url);
+      if (payload.data.page_type) {
+        setPageType(payload.data.page_type);
       }
-      if (demoMode) {
-        writeDemoScenarioId(payload.data.audit_id);
-      }
+      setPreviewUrl(payload.data.image_url || null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses audit.';
-      setError(message);
+      console.error(err);
+      const fallback = buildFreeFallback('l3', pageType || 'landing');
+      setFreeResult(fallback);
+      setError('Terjadi kesalahan saat memproses audit.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownloadJson = () => {
-    if (!result) return;
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `uxaudit-${auditId ?? 'report'}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleRunAnotherAudit = () => {
+    logClientEvent('run_another_audit_clicked', { audit_id: auditId });
+    resetAuditForm();
+    router.push('/audit');
   };
+
+  const scoreDisplay = useMemo(() => {
+    if (!freeResult) return null;
+    return freeResult.ux_score;
+  }, [freeResult]);
 
   return (
     <div className="relative">
       <main className="mx-auto min-h-screen max-w-6xl px-6 pb-20 pt-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXRay</p>
-          <h1 className="text-3xl font-semibold text-foreground">Audit Page</h1>
-        </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXRay</p>
+            <h1 className="text-3xl font-semibold text-foreground">Audit Page</h1>
+          </div>
           <div className="flex items-center gap-3">
             <ThemeSwitcher />
             <Link href="/" className="btn-secondary">
@@ -639,18 +430,18 @@ export default function AuditPageClient() {
               <label className="text-sm font-semibold text-foreground">Tipe Halaman</label>
               <div className="mt-2">
                 <select
-                    value={pageType}
-                    onChange={(event) => setPageType(event.target.value as PageType)}
-                    className="block w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground"
-                    disabled={loading}
-                    required
-                  >
+                  value={pageType}
+                  onChange={(event) => setPageType(event.target.value as PageType)}
+                  className="block w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground"
+                  disabled={loading}
+                  required
+                >
                   <option value="" disabled>
                     Pilih tipe halaman
                   </option>
                   {pageTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
+                    <option key={type.value} value={type.value}>
+                      {type.label}
                     </option>
                   ))}
                 </select>
@@ -660,15 +451,21 @@ export default function AuditPageClient() {
             <div>
               <label className="text-sm font-semibold text-foreground">Konteks Tambahan (opsional)</label>
               <div className="mt-2">
-                  <textarea
-                    value={optionalContext}
-                    onChange={(event) => setOptionalContext(event.target.value)}
-                    placeholder="Contoh: target user adalah pemilik UMKM, tujuan halaman: ajakan demo."
-                    className="min-h-[90px] w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground placeholder:text-subtle"
-                    disabled={loading}
-                  />
-                </div>
+                <textarea
+                  value={optionalContext}
+                  onChange={(event) => setOptionalContext(event.target.value)}
+                  placeholder="Contoh: target user adalah pemilik UMKM, tujuan halaman: ajakan demo."
+                  className="min-h-[90px] w-full rounded-2xl border border-input-border bg-input px-4 py-3 text-sm text-foreground placeholder:text-subtle"
+                  disabled={loading}
+                />
               </div>
+            </div>
+
+            {upgradeNotice && (
+              <div className="rounded-2xl border border-status-warning/30 bg-status-warning/10 px-4 py-3 text-sm text-status-warning">
+                {upgradeNotice}
+              </div>
+            )}
 
             {error && (
               <div className="rounded-2xl border border-status-error/30 bg-status-error/10 px-4 py-3 text-sm text-status-error">
@@ -677,34 +474,13 @@ export default function AuditPageClient() {
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={loading}
-              >
+              <button type="submit" className="btn-primary" disabled={loading}>
                 {loading ? 'Analyzing...' : 'Analyze'}
               </button>
-              {result && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleRunAnotherAudit}
-                    className="btn-secondary"
-                    disabled={loading}
-                  >
-                    Run Another Audit
-                  </button>
-                  {demoMode && (
-                    <button
-                      type="button"
-                      onClick={handleResetDemo}
-                      className="btn-secondary"
-                      disabled={loading}
-                    >
-                      Reset Demo
-                    </button>
-                  )}
-                </>
+              {freeResult && (
+                <button type="button" onClick={handleRunAnotherAudit} className="btn-secondary" disabled={loading}>
+                  Run Another Audit
+                </button>
               )}
               <p className="text-xs text-muted-foreground">Estimasi 10-30 detik.</p>
             </div>
@@ -744,130 +520,131 @@ export default function AuditPageClient() {
           </div>
         </form>
 
-        {result && (
+        {loading && !freeResult && (
+          <section className="mt-12">
+            <div className="card p-6 animate-pulse">
+              <div className="h-4 w-24 rounded bg-surface-2" />
+              <div className="mt-3 h-8 w-16 rounded bg-surface-2" />
+              <div className="mt-6 space-y-3">
+                <div className="h-4 w-full rounded bg-surface-2" />
+                <div className="h-4 w-[90%] rounded bg-surface-2" />
+                <div className="h-4 w-[80%] rounded bg-surface-2" />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {freeResult && (
           <section className="mt-12 space-y-8">
             <div className="card grid gap-6 p-6 lg:grid-cols-[0.9fr_1.1fr]">
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Page Score</p>
-                <div className="text-5xl font-semibold text-foreground">{result.ux_score}</div>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={handleDownloadJson} className="btn-secondary">
-                    Download Report (JSON)
-                  </button>
-                  {auditId && (
-                    <a
-                      href={`/api/audit/${auditId}/report?access_level=${accessLevel}`}
-                      className="btn-secondary"
-                    >
-                      Download Report (HTML)
-                    </a>
-                  )}
-                </div>
+                <div className="text-5xl font-semibold text-foreground">{scoreDisplay}</div>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-foreground">Top 3 Prioritas</h3>
-                <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                  {result.summary.top_3_priorities.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ol>
-                <p
-                  ref={whyThisMattersRef}
-                  className="text-sm text-muted-foreground"
-                >
-                  {result.summary.overall_notes}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              {scoreEntries.map((entry, index) => (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-foreground">Top Issues</h3>
+                {freeResult.analysis_state === 'l2' && (
+                  <div className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted-foreground">
+                    <p className="font-semibold text-foreground">UXRay Quick Insight</p>
+                    <p className="mt-1">We&apos;re refining our analysis engine.</p>
+                  </div>
+                )}
                 <div
-                  key={entry.category}
-                  className="card animate-fade-up p-5"
-                  style={{ animationDelay: `${index * 80}ms` }}
+                  ref={freeInsightRef}
+                  onScroll={handleInsightScroll}
+                  className="max-h-[280px] space-y-3 overflow-y-auto pr-2"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">
-                    {entry.category}
-                  </p>
-                  <div className="mt-2 text-3xl font-semibold text-foreground">{entry.score}</div>
+                  {freeResult.issues.map((issue, index) => (
+                    <div key={`${issue.title}-${index}`} className="rounded-2xl border border-border bg-card p-4">
+                      <p className="text-sm font-semibold text-foreground">
+                        {index + 1}. {issue.title}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">Why it hurts:</span> {issue.why_it_hurts}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">Impact:</span> {issue.impact}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">Why this matters:</span>{' '}
+                    {freeResult.why_this_matters}
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
 
-            {accessView?.lockState.showLockedCta && (
-              <LockedReportSection
-                teaserIssues={teaserIssues}
-                teaserQuickWins={teaserQuickWins}
-                lockedIssues={lockedIssues}
-                lockedQuickWins={lockedQuickWins}
-                auditId={auditId}
-                accessLevel={accessLevel}
+            {freeInsightCompleted && !proResult && (
+              <LockedSection
                 onUnlockClick={() => {
-                  logClientEvent('unlock_clicked', { audit_id: auditId });
+                  logClientEvent('unlock_cta_clicked', { audit_id: auditId });
+                  const href = auditId ? `/unlock?auditId=${auditId}` : '/unlock';
+                  router.push(href);
                 }}
               />
             )}
 
-            {canViewDetails && (
-              <>
-                <div className="card p-6">
-                  <h3 className="text-lg font-semibold text-foreground">Issues Detail</h3>
-                  <div className="mt-4 space-y-5">
-                    {accessView?.visibleIssues?.map((issue, index) => (
-                      <div key={`${issue.title}-${index}`} className="rounded-2xl border border-border bg-card p-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <SeverityBadge severity={issue.severity} />
-                          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-subtle">
-                            {issue.category}
-                          </span>
-                        </div>
-                        <h4 className="mt-2 text-base font-semibold text-foreground">{issue.title}</h4>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          <span className="font-semibold text-foreground">Why users hesitate:</span> {issue.evidence}
-                        </p>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          <span className="font-semibold text-foreground">Impact:</span> {issue.impact}
-                        </p>
-                        <div className="mt-3 text-sm text-muted-foreground">
-                          <span className="font-semibold text-foreground">How to fix it:</span>
-                          <ul className="mt-2 list-disc space-y-1 pl-5">
-                            {issue.recommendation_steps.map((step) => (
-                              <li key={step}>{step}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    ))}
+            {loadingPro && (
+              <div className="card p-6 animate-pulse">
+                <div className="h-4 w-32 rounded bg-surface-2" />
+                <div className="mt-4 h-4 w-full rounded bg-surface-2" />
+                <div className="mt-2 h-4 w-[85%] rounded bg-surface-2" />
+              </div>
+            )}
+
+            {proResult && (
+              <div className="card p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Full Report</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Prioritized fixes and copy guidance.</p>
                   </div>
                 </div>
 
-                {canViewFull && (
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="card p-6">
-                      <h3 className="text-lg font-semibold text-foreground">Quick Wins</h3>
-                      <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                        {accessView?.visibleQuickWins?.map((win) => (
-                          <li key={win.title}>
-                            <span className="font-semibold text-foreground">{win.title}:</span> {win.action}
-                            <div className="text-xs text-subtle">Impact: {win.expected_impact}</div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="card p-6">
-                      <h3 className="text-lg font-semibold text-foreground">Next Steps</h3>
-                      <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-                        {accessView?.visibleNextSteps?.map((step) => (
-                          <li key={step}>{step}</li>
-                        ))}
-                      </ul>
-                    </div>
+                {proResult.analysis_state === 'l2' && (
+                  <div className="mt-4 rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted-foreground">
+                    <p className="font-semibold text-foreground">UXRay Quick Insight</p>
+                    <p className="mt-1">We&apos;re refining our analysis engine.</p>
                   </div>
                 )}
-              </>
-            )}
 
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-subtle">Fix order</p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                    {proResult.fix_order.map((item) => (
+                      <li key={`${item.title}-${item.reason ?? 'none'}`}>
+                        {item.title}
+                        {item.reason ? ` — because ${item.reason}` : ''}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div className="mt-6 space-y-5">
+                  {proResult.issues.map((issue, index) => (
+                    <div key={`${issue.title}-${index}`} className="rounded-2xl border border-border bg-card p-4">
+                      <h4 className="text-base font-semibold text-foreground">
+                        {index + 1}. {issue.title}
+                      </h4>
+                      <p className="mt-2 text-sm text-muted-foreground">{issue.why_users_hesitate}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">Impact:</span> {issue.impact}
+                      </p>
+
+                      <div className="mt-3 text-sm text-muted-foreground">
+                        <span className="font-semibold text-foreground">How to fix it:</span>
+                        <ul className="mt-2 list-disc space-y-1 pl-5">
+                          {issue.how_to_fix.map((step) => (
+                            <li key={step}>{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
       </main>

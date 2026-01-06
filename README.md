@@ -216,3 +216,16 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 ---
 
 Built with 🚀 by the **UXAudit AI Team**.
+
+## Manual QA Checklist
+
+* Run 10-20 audits manually across page types and inputs.
+* Verify Issue #1 is a Conversion & Flow issue when available for the page type.
+* Verify unlock click + email capture flow.
+* Verify no empty states (fallbacks render content).
+* Verify prompts are sent on each request (check server logs).
+
+## Issue Pool & Mapping
+
+The UX issue pool is hardcoded in the backend and cannot be edited from the client.
+Issue selection is constrained by page type (landing, dashboard, app) using the backend mapping.
