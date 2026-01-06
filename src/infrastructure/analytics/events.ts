@@ -1,6 +1,10 @@
 export type AnalyticsEvent =
   | 'audit_started'
-  | 'audit_completed'
-  | 'insight_scrolled_to_end'
-  | 'unlock_clicked'
-  | 'email_submitted';
+  | 'free_insight_rendered'
+  | 'free_insight_completed'
+  | 'unlock_cta_clicked'
+  | 'early_access_modal_viewed'
+  | 'email_submitted_success'
+  | 'email_submitted_error'
+  | 'run_another_audit_clicked'
+  | 'full_report_unlocked';

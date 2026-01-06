@@ -53,7 +53,7 @@ export const submitEarlyAccessEmail = async (
   const userAgent = meta?.userAgent ?? null;
   const ipHash = meta?.ip ? createHash('sha256').update(meta.ip).digest('hex') : null;
 
-  logServerEvent('email_submitted', {
+  logServerEvent('email_submitted_success', {
     email: normalizedEmail,
     source: payload.source,
     audit_id: payload.audit_id

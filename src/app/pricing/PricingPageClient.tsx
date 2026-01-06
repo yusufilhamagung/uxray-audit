@@ -139,7 +139,7 @@ export default function PricingPageClient({ source, auditId, demoEnabled }: Pric
       setSubmittedEmail(emailParsed.data.email);
       setEmail('');
       setErrorMessage(null);
-      logClientEvent('email_submitted', { audit_id: validAuditId, source });
+      logClientEvent('email_submitted_success', { audit_id: validAuditId, source });
       setEarlyAccess();
     } catch (error) {
       console.error(error);

@@ -1,6 +1,5 @@
 import type { AuditReport } from '@/domain/entities/audit-report';
-import type { IssueTitle } from '@config/issuePool';
-import { ISSUE_DETAILS } from '@config/issuePool';
+import { ISSUE_POOL } from '@/config/issuePool';
 
 export type DemoScenario = {
   id: string;
@@ -47,12 +46,12 @@ const fallbackSummary = {
 
 const buildFullReport = (issues: AuditReport['issues']) => {
   const prioritized = issues.slice(0, 3).map((issue) => {
-    const detail = ISSUE_DETAILS[issue.title as IssueTitle];
+    const detail = ISSUE_POOL.issues.find((entry) => entry.title === issue.title);
     return {
       title: issue.title,
-      why_users_hesitate: detail?.whyUsersHesitate ?? issue.evidence,
+      why_users_hesitate: detail?.description ?? issue.evidence,
       impact: issue.impact,
-      how_to_fix: detail?.fixes ?? issue.recommendation_steps
+      how_to_fix: detail?.recommendation ? [detail.recommendation] : issue.recommendation_steps
     };
   });
 

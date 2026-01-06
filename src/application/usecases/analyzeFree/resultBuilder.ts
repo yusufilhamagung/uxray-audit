@@ -1,7 +1,7 @@
 import type { AnalysisState, AuditReport, Category, Severity, IssueImpact } from '@/domain/entities/audit-report';
 import { AuditResultSchema } from '@/domain/entities/audit-report';
-import { ISSUE_DETAILS, ISSUE_POOL, STATIC_PRIORITY_ONE } from '@config/issuePool';
-import type { IssueTitle } from '@config/issuePool';
+import { getAllowedIssues, getHighestSeverityIssue, isConversionBlocker } from '@/domain/issueSelection';
+import type { IssueEntry } from '@/config/issuePool';
 
 type ImageMetrics = {
   width?: number;
@@ -24,40 +24,33 @@ const SCORE_CATEGORIES: Category[] = [
   'Accessibility'
 ];
 
-const CATEGORY_MAP: Record<IssueTitle, Category> = {
-  "CTA doesn't stand out": 'CTA & Conversion',
-  'Unclear value proposition': 'CTA & Conversion',
-  'Too much content above the fold': 'Visual Hierarchy',
-  'No clear next step': 'Layout & Spacing',
-  'Weak headline-message alignment': 'Copy Clarity',
-  'Visual hierarchy is confusing': 'Visual Hierarchy',
-  'Primary action competes with secondary actions': 'CTA & Conversion',
-  'Copy is generic or vague': 'Copy Clarity',
-  "Information order doesn't match user intent": 'Layout & Spacing',
-  'Design feels busy or cluttered': 'Visual Hierarchy',
-  'Lack of trust signals': 'Accessibility',
-  'Visual style feels inconsistent': 'Visual Hierarchy',
-  'Too much emphasis on features, not outcomes': 'CTA & Conversion',
-  'Form feels intimidating': 'Accessibility',
-  'No sense of urgency or motivation': 'CTA & Conversion'
+const CATEGORY_MAP: Record<IssueEntry['category'], Category> = {
+  'Clarity & Messaging': 'Copy Clarity',
+  'Conversion & Flow': 'CTA & Conversion',
+  'Trust & Credibility': 'Accessibility',
+  'Usability & Interaction': 'Layout & Spacing',
+  'Retention & Reusability': 'CTA & Conversion'
 };
 
-const SEVERITY_MAP: Record<IssueTitle, Severity> = {
-  "CTA doesn't stand out": 'High',
-  'Unclear value proposition': 'High',
-  'Too much content above the fold': 'High',
-  'No clear next step': 'High',
-  'Weak headline-message alignment': 'High',
-  'Visual hierarchy is confusing': 'Medium',
-  'Primary action competes with secondary actions': 'Medium',
-  'Copy is generic or vague': 'Medium',
-  "Information order doesn't match user intent": 'Medium',
-  'Design feels busy or cluttered': 'Medium',
-  'Lack of trust signals': 'Low',
-  'Visual style feels inconsistent': 'Low',
-  'Too much emphasis on features, not outcomes': 'Low',
-  'Form feels intimidating': 'Low',
-  'No sense of urgency or motivation': 'Low'
+const SEVERITY_MAP: Record<IssueEntry['severity'], Severity> = {
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low'
+};
+
+const impactFromCategory = (category: IssueEntry['category']): IssueImpact => {
+  switch (category) {
+    case 'Conversion & Flow':
+      return 'Conversion';
+    case 'Trust & Credibility':
+      return 'Trust';
+    case 'Retention & Reusability':
+      return 'Conversion';
+    case 'Clarity & Messaging':
+    case 'Usability & Interaction':
+    default:
+      return 'Clarity';
+  }
 };
 
 const EXPECTED_IMPACT_TEXT: Record<IssueImpact, string> = {
@@ -103,57 +96,57 @@ const deriveFlags = (image: ImageMetrics) => {
   };
 };
 
-const selectPriority1 = (flags: ReturnType<typeof deriveFlags>): IssueTitle => {
-  if (flags.isTall || flags.isLarge) return 'Too much content above the fold';
-  if (flags.isDense) return "CTA doesn't stand out";
-  if (flags.isLight) return 'Unclear value proposition';
-  if (flags.isWide) return 'Weak headline-message alignment';
-  return 'No clear next step';
+const normalizePageType = (value: string) => {
+  const normalized = value.toLowerCase();
+  if (normalized.includes('dashboard')) return 'dashboard';
+  if (normalized.includes('app')) return 'app';
+  return 'landing';
 };
 
-const selectPriority2 = (flags: ReturnType<typeof deriveFlags>): IssueTitle => {
-  if (flags.isDense) return 'Design feels busy or cluttered';
-  if (flags.isWide) return 'Primary action competes with secondary actions';
-  if (flags.isLight) return 'Copy is generic or vague';
-  if (flags.isTall) return "Information order doesn't match user intent";
-  return 'Visual hierarchy is confusing';
+const selectIssues = (pageType: string) => {
+  const allowed = getAllowedIssues(normalizePageType(pageType));
+  const selected: IssueEntry[] = [];
+
+  const conversionIssue = allowed.find((issue) => isConversionBlocker(issue));
+  if (conversionIssue) {
+    selected.push(conversionIssue);
+  } else {
+    const highest = getHighestSeverityIssue(allowed);
+    if (highest) selected.push(highest);
+  }
+
+  for (const issue of allowed) {
+    if (selected.length >= 3) break;
+    if (selected.some((entry) => entry.id === issue.id)) continue;
+    selected.push(issue);
+  }
+
+  return selected.slice(0, 3);
 };
 
-const selectPriority3 = (flags: ReturnType<typeof deriveFlags>): IssueTitle => {
-  if (flags.isLight) return 'Lack of trust signals';
-  if (flags.isTall) return 'Form feels intimidating';
-  if (flags.isDense) return 'Visual style feels inconsistent';
-  if (flags.isWide) return 'Too much emphasis on features, not outcomes';
-  return 'No sense of urgency or motivation';
-};
-
-const buildIssueEntry = (title: IssueTitle) => {
-  const detail = ISSUE_DETAILS[title];
-  const impact = detail.impact;
+const buildIssueEntry = (issue: IssueEntry) => {
+  const impact = impactFromCategory(issue.category);
   return {
-    title,
-    severity: SEVERITY_MAP[title],
-    category: CATEGORY_MAP[title],
-    problem: detail.whyItHurts,
-    evidence: detail.whyUsersHesitate,
-    recommendation_steps: detail.fixes,
+    title: issue.title,
+    severity: SEVERITY_MAP[issue.severity],
+    category: CATEGORY_MAP[issue.category],
+    problem: issue.description,
+    evidence: issue.why_it_matters,
+    recommendation_steps: [issue.recommendation],
     expected_impact: EXPECTED_IMPACT_TEXT[impact],
     impact
   };
 };
 
 export const buildIssueList = (input: IssueSelectionInput): AuditReport['issues'] => {
-  const flags = deriveFlags(input.image);
-  const order: IssueTitle[] = [
-    selectPriority1(flags),
-    selectPriority2(flags),
-    selectPriority3(flags)
-  ];
-
-  return order.map((title) => buildIssueEntry(title));
+  const selected = selectIssues(input.pageType);
+  return selected.map((issue) => buildIssueEntry(issue));
 };
 
-const buildStaticIssues = (): AuditReport['issues'] => [buildIssueEntry(STATIC_PRIORITY_ONE)];
+const buildStaticIssues = (input: IssueSelectionInput): AuditReport['issues'] => {
+  const selected = selectIssues(input.pageType);
+  return selected.length ? [buildIssueEntry(selected[0])] : [];
+};
 
 const buildPriorityLines = (issues: AuditReport['issues']) => {
   const lines = issues.slice(0, 3).map((issue) => {
@@ -168,9 +161,7 @@ const buildPriorityLines = (issues: AuditReport['issues']) => {
 const buildSummary = (issues: AuditReport['issues'], state: AnalysisState) => ({
   top_3_priorities: buildPriorityLines(issues),
   overall_notes:
-    state === 'l2'
-      ? "Quick Insight. We're refining this report."
-      : state === 'l3'
+    state === 'l2' || state === 'l3'
       ? "Quick Insight. We're refining this report."
       : 'Small confusions in the top section, message, or main button slow decisions. Fixing them keeps people moving.'
 });
@@ -267,7 +258,7 @@ export const normalizeAuditResult = (
   input: IssueSelectionInput,
   state: AnalysisState = 'full'
 ): AuditReport => {
-  const issues = state === 'full' ? buildIssueList(input) : buildStaticIssues();
+  const issues = state === 'full' ? buildIssueList(input) : buildStaticIssues(input);
   const uxScore = computeUxScore(input);
   const normalized = {
     analysis_state: state,

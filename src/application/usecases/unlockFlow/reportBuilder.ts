@@ -1,15 +1,16 @@
-import { ISSUE_DETAILS } from '@config/issuePool';
-import type { IssueTitle } from '@config/issuePool';
+import { ISSUE_POOL, type IssueEntry } from '@/config/issuePool';
 import type { AuditReport } from '@/domain/entities/audit-report';
+
+const ISSUE_BY_TITLE = new Map<string, IssueEntry>(ISSUE_POOL.issues.map((issue) => [issue.title, issue]));
 
 export const buildFullReportFromIssues = (issues: AuditReport['issues']) => {
   const prioritized = issues.map((issue) => {
-    const detail = ISSUE_DETAILS[issue.title as IssueTitle];
+    const detail = ISSUE_BY_TITLE.get(issue.title);
     return {
       title: issue.title,
-      why_users_hesitate: detail?.whyUsersHesitate ?? issue.evidence,
+      why_users_hesitate: detail?.description ?? issue.evidence,
       impact: issue.impact,
-      how_to_fix: detail?.fixes ?? ['Clarify the next step.']
+      how_to_fix: detail?.recommendation ? [detail.recommendation] : ['Clarify the next step.']
     };
   });
 
