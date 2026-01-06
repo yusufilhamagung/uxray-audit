@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import EarlyAccessModal from '@/presentation/components/EarlyAccessModal';
 
 type UnlockPageClientProps = {
@@ -11,23 +12,34 @@ const checklistItems = [
   'Full list of UX issues detected',
   'Clear explanation for each issue',
   'Actionable recommendations (prioritized)',
-  'Access this report anytime via email'
+  'Access this report anytime via email',
 ];
 
 export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
   const router = useRouter();
 
+  // 🔑 Modal state (parent-controlled)
+  const [showEarlyAccessModal, setShowEarlyAccessModal] = useState(true);
+
   return (
     <>
-      <EarlyAccessModal
-        auditId={auditId ?? null}
-        onRunAnotherAudit={() => router.push('/audit?locked=1')}
-      />
+      {showEarlyAccessModal && (
+        <EarlyAccessModal
+          auditId={auditId ?? null}
+          onRunAnotherAudit={() => router.push('/audit?locked=1')}
+          onClose={() => setShowEarlyAccessModal(false)}
+        />
+      )}
+
       <main className="mx-auto max-w-6xl px-6 pb-20 pt-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXRay</p>
-            <h1 className="text-3xl font-semibold text-foreground">🔓 Unlock Full UX Report</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">
+              UXRay
+            </p>
+            <h1 className="text-3xl font-semibold text-foreground">
+              🔓 Unlock Full UX Report
+            </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Get the complete UX analysis for this page and keep access to it.
             </p>
@@ -44,7 +56,9 @@ export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
             </div>
 
             <div className="card p-6">
-              <h2 className="text-lg font-semibold text-foreground">What you&apos;ll unlock with Early Access</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                What you&apos;ll unlock with Early Access
+              </h2>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                 {checklistItems.map((item) => (
                   <li key={item} className="flex items-start gap-2">
@@ -58,7 +72,9 @@ export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
 
           <div className="card flex flex-col gap-4 p-6">
             <div>
-              <label className="text-sm font-semibold text-foreground">Enter your email to unlock this report</label>
+              <label className="text-sm font-semibold text-foreground">
+                Enter your email to unlock this report
+              </label>
               <input
                 type="email"
                 placeholder="you@company.com"
@@ -72,11 +88,16 @@ export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
 
             <button type="button" className="btn-primary w-full" disabled>
               👉 Unlock Full Report
-            
             </button>
-            <p className="text-xs text-muted-foreground">This unlocks the full report for this audit only.</p>
 
-            <div className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-xs text-muted-foreground">🔒 Early access unlocks insights for this audit. Creating new audits will require an upgrade later.</div>
+            <p className="text-xs text-muted-foreground">
+              This unlocks the full report for this audit only.
+            </p>
+
+            <div className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-xs text-muted-foreground">
+              🔒 Early access unlocks insights for this audit. Creating new audits will require an upgrade later.
+            </div>
+
             <p className="text-xs text-muted-foreground">
               Want to audit another page or screen? Pro access will unlock multiple audits and advanced analysis.
             </p>
