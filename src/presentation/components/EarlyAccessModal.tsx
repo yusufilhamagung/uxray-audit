@@ -158,9 +158,11 @@ export default function EarlyAccessModal({ auditId, onRunAnotherAudit, onClose }
               <p className="font-semibold text-foreground">✔ You&apos;re on the list</p>
               <p className="mt-2">Sample insight: Make the primary action stand out in the first screen.</p>
             </div>
+
             <button type="button" className="btn-secondary w-full" disabled>
               You&apos;re on the list
             </button>
+
             <div className="space-y-1">
               <button
                 type="button"
@@ -174,6 +176,11 @@ export default function EarlyAccessModal({ auditId, onRunAnotherAudit, onClose }
               </button>
               <p className="text-xs text-muted-foreground">Upgrade required to run a new audit.</p>
             </div>
+
+            {/* Close button after success */}
+            <button type="button" className="btn-secondary w-full" onClick={handleClose}>
+              Close
+            </button>
           </div>
         )}
       </div>
