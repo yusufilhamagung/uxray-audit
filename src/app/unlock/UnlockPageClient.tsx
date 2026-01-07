@@ -19,10 +19,7 @@ const checklistItems = [
 export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
   const router = useRouter();
   const [showEarlyAccessModal, setShowEarlyAccessModal] = useState(true);
-
-  // 🔑 Modal state (parent-controlled)
-  const [showEarlyAccessModal, setShowEarlyAccessModal] = useState(true);
-
+  
   return (
     <>
       {showEarlyAccessModal && (
