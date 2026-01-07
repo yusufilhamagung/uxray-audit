@@ -25,7 +25,10 @@ export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
         <EarlyAccessModal
           auditId={auditId ?? null}
           onRunAnotherAudit={() => router.push('/audit?locked=1')}
-          onClose={() => setShowEarlyAccessModal(false)}
+          onClose={() => {
+            setShowEarlyAccessModal(false);
+            router.push('/audit');
+          }}
         />
       )}
       <main className="mx-auto max-w-6xl px-6 pb-20 pt-12">
