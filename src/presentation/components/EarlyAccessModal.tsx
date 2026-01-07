@@ -33,18 +33,22 @@ export default function EarlyAccessModal({ auditId, onRunAnotherAudit, onClose }
     logClientEvent("early_access_modal_viewed", { audit_id: auditId });
   }, [auditId]);
 
-  const resetFormState = () => {
+  const resetFormState = useCallback(() => {
     setEmail("");
     setStatus("idle");
     setErrorMessage(null);
-  };
+  }, []);
 
   const handleClose = useCallback(() => {
-    if (status === "loading") return;
     resetFormState();
     logClientEvent("early_access_modal_closed", { audit_id: auditId });
     onClose();
-  }, [auditId, onClose, status]);
+  }, [auditId, onClose, resetFormState]);
+
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    handleClose();
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -108,16 +112,11 @@ export default function EarlyAccessModal({ auditId, onRunAnotherAudit, onClose }
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm"
-      onClick={handleClose}>
-      <div
-        className="relative w-full max-w-xl rounded-3xl border border-border bg-card p-6 shadow-lg"
-        onClick={(event) => event.stopPropagation()}>
-        <button
-          type="button"
-          onClick={handleClose}
-          disabled={status === "loading"}
-          aria-label="Close modal"
-          className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground transition hover:bg-surface-2 hover:text-foreground">
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true">
+      <div className="relative w-full max-w-xl rounded-3xl border border-border bg-card p-6 shadow-lg" onClick={(event) => event.stopPropagation()}>
+        <button type="button" onClick={handleClose} aria-label="Close modal" className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground transition hover:bg-surface-2 hover:text-foreground">
           ✕
         </button>
         <div className="space-y-3">
