@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EarlyAccessModal from '@/presentation/components/EarlyAccessModal';
 
@@ -16,13 +17,17 @@ const checklistItems = [
 
 export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
   const router = useRouter();
+  const [showEarlyAccessModal, setShowEarlyAccessModal] = useState(true);
 
   return (
     <>
-      <EarlyAccessModal
-        auditId={auditId ?? null}
-        onRunAnotherAudit={() => router.push('/audit?locked=1')}
-      />
+      {showEarlyAccessModal && (
+        <EarlyAccessModal
+          auditId={auditId ?? null}
+          onRunAnotherAudit={() => router.push('/audit?locked=1')}
+          onClose={() => setShowEarlyAccessModal(false)}
+        />
+      )}
       <main className="mx-auto max-w-6xl px-6 pb-20 pt-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>

@@ -7,4 +7,5 @@ export type AnalyticsEvent =
   | 'email_submitted_success'
   | 'email_submitted_error'
   | 'run_another_audit_clicked'
-  | 'full_report_unlocked';
+  | 'full_report_unlocked'
+  | 'early_access_modal_closed';
