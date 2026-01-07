@@ -16,7 +16,7 @@ export const loadImageBase64 = async (params: {
   const { imageUrl, imageType, imagePath } = params;
   const resolvedType = imageType ?? inferMimeType(imageUrl);
 
-  if (imagePath) {
+  if (imagePath && path.isAbsolute(imagePath)) {
     const buffer = await fs.readFile(imagePath);
     return { base64: buffer.toString('base64'), mimeType: resolvedType };
   }
