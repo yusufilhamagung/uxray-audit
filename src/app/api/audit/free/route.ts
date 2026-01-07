@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import path from 'path';
 import { z } from 'zod';
 import { jsonResponse } from '@/shared/utils/response';
 import { PageTypeEnum, type PageType } from '@/domain/types/uxray';
@@ -11,7 +10,7 @@ import {
   GeminiTimeoutError,
   requestGeminiContent
 } from '@/infrastructure/ai/uxrayGemini';
-import { LocalFileStorage } from '@/infrastructure/storage/LocalFileStorage';
+import { SupabaseFileStorage } from '@/infrastructure/storage/SupabaseFileStorage';
 import { saveAuditRecord, findAuditById } from '@/infrastructure/audit/uxrayAuditStore';
 import { PuppeteerCaptureService } from '@/infrastructure/fetchers/PuppeteerCaptureService';
 import { UrlFetcher } from '@/infrastructure/fetchers/urlFetcher';
@@ -29,8 +28,6 @@ const jsonPayloadSchema = z.object({
   page_type: PageTypeEnum.optional(),
   optional_context: z.string().max(500).optional()
 });
-
-const buildImagePath = (filePath: string) => path.join(process.cwd(), 'public', filePath);
 
 const getPageType = (pageType: unknown): PageType | null => {
   if (!pageType) return 'landing';
@@ -208,9 +205,9 @@ export async function POST(request: Request) {
   const ext = payload.imageType === 'image/png' ? 'png' : 'jpg';
   const dateFolder = new Date().toISOString().slice(0, 10);
   const filePath = `audits/${dateFolder}/${auditId}.${ext}`;
-  const storage = new LocalFileStorage();
+  const storage = new SupabaseFileStorage();
   const imageUrl = await storage.upload(filePath, buffer, payload.imageType);
-  const imagePath = buildImagePath(filePath);
+  const imagePath = filePath;
 
   const combinedContext = [payload.optionalContext?.trim(), urlContext?.trim()]
     .filter(Boolean)
