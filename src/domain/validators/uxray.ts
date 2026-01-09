@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { IssueEntry } from '@/config/issuePool';
-import { getAllowedIssues, getHighestSeverityIssue, getIssueByTitle, isConversionBlocker } from '@/domain/issueSelection';
+import { getAllowedIssues, getHighestSeverityIssue, getIssueByTitle, isConversionBlocker, selectIssuesFromPool } from '@/domain/issueSelection';
 import {
   FreeAnalysisSchema,
   ProAnalysisSchema,
@@ -401,5 +401,38 @@ export const buildProFallback = (state: AnalysisState, pageType: PageType): ProA
         reason: fallbackIssue?.why_it_matters ?? 'Ini mencegah user bergerak ke langkah berikutnya.'
       }
     ]
+  };
+};
+
+// Select exactly N issues in pool order, with earliest Priority-1 first
+const pickFallbackIssues = (allowed: IssueEntry[], count: number): IssueEntry[] => {
+  return selectIssuesFromPool(allowed, count);
+};
+
+// Build free fallback with exactly 3 issues in pool order
+export const buildFreeFallbackV2 = (state: AnalysisState, pageType: PageType): FreeAuditResult => {
+  const allowed = getAllowedIssues(pageType);
+  const fallbackIssues = pickFallbackIssues(allowed, 3);
+
+  const issues: FreeIssue[] = fallbackIssues.map((issue) => ({
+    title: issue.title,
+    why_it_hurts: issue.description,
+    impact: getImpactForIssue(issue)
+  }));
+
+  // Deterministic score: 75 - (3 * 8) = 51
+  const uxScore = 75 - (3 * 8);
+
+  return {
+    analysis_state: state,
+    ux_score: Math.max(45, Math.min(85, uxScore)),
+    issues: issues.length > 0 ? issues : [
+      {
+        title: 'Value Proposition Tidak Jelas',
+        why_it_hurts: 'Pesan utama belum terlihat jelas di bagian pertama.',
+        impact: 'Clarity'
+      }
+    ],
+    why_this_matters: fallbackIssues[0]?.why_it_matters ?? 'User perlu memahami value utama sebelum memutuskan untuk lanjut.'
   };
 };

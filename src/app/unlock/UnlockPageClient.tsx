@@ -24,10 +24,18 @@ export default function UnlockPageClient({ auditId }: UnlockPageClientProps) {
       {showEarlyAccessModal && (
         <EarlyAccessModal
           auditId={auditId ?? null}
-          onRunAnotherAudit={() => router.push('/audit?locked=1')}
           onClose={() => {
             setShowEarlyAccessModal(false);
             router.push('/audit');
+          }}
+          onUnlockSuccess={() => {
+            setShowEarlyAccessModal(false);
+            // Redirect back to audit with the unlocked report
+            if (auditId) {
+              router.push(`/audit?id=${auditId}`);
+            } else {
+              router.push('/audit');
+            }
           }}
         />
       )}
