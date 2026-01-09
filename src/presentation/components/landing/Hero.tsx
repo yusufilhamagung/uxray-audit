@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 
@@ -26,7 +26,7 @@ export default function Hero() {
 
           <div className="flex flex-col items-center gap-4 w-full">
             <Link href="/audit" className="btn-primary text-center">
-              Audit now
+              Audit Now
             </Link>
           </div>
 
