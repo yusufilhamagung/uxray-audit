@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { logClientEvent } from "@/infrastructure/analytics/client";
-import { setAuditUnlockId, setEarlyAccess } from "@/infrastructure/storage/unlockStorage";
+import { setAuditUnlockId, setEarlyAccessAccess } from "@/infrastructure/storage/unlockStorage";
 
 type EarlyAccessModalProps = {
   auditId: string | null;
-  onRunAnotherAudit: () => void;
   onClose: () => void;
+  onUnlockSuccess?: (unlockId: string) => void;
 };
 
 type ApiResponse<T> = {
@@ -24,7 +24,7 @@ type WaitlistResponse = {
 
 const emailSchema = z.string().email();
 
-export default function EarlyAccessModal({ auditId, onRunAnotherAudit, onClose }: EarlyAccessModalProps) {
+export default function EarlyAccessModal({ auditId, onClose, onUnlockSuccess }: EarlyAccessModalProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -96,11 +96,17 @@ export default function EarlyAccessModal({ auditId, onRunAnotherAudit, onClose }
         throw new Error(payload?.message || "Could not save email.");
       }
 
-      setAuditUnlockId(auditId, payload.data.audit_unlock_id);
-      setEarlyAccess(true);
+      const unlockId = payload.data.audit_unlock_id;
+      setAuditUnlockId(auditId, unlockId);
+      setEarlyAccessAccess(parsedEmail.data, unlockId);
       setStatus("success");
       setEmail("");
       logClientEvent("email_submitted_success", { audit_id: auditId });
+
+      // Notify parent of successful unlock and close modal
+      if (onUnlockSuccess) {
+        onUnlockSuccess(unlockId);
+      }
     } catch (error) {
       console.error(error);
       setStatus("error");
@@ -153,32 +159,13 @@ export default function EarlyAccessModal({ auditId, onRunAnotherAudit, onClose }
           </form>
         ) : (
           <div className="mt-6 space-y-4">
-            <div className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted-foreground">
-              <p className="font-semibold text-foreground">✔ You&apos;re on the list</p>
-              <p className="mt-2">Sample insight: Make the primary action stand out in the first screen.</p>
+            <div className="rounded-2xl border border-status-success/30 bg-status-success/10 px-4 py-3 text-sm text-foreground">
+              <p className="font-semibold">Unlocked!</p>
+              <p className="mt-1 text-muted-foreground">Your full report is now available below.</p>
             </div>
 
-            <button type="button" className="btn-secondary w-full" disabled>
-              You&apos;re on the list
-            </button>
-
-            <div className="space-y-1">
-              <button
-                type="button"
-                className="btn-primary w-full"
-                onClick={() => {
-                  logClientEvent("run_another_audit_clicked", { audit_id: auditId });
-                  onRunAnotherAudit();
-                }}
-                title="Upgrade required to run a new audit.">
-                Run Another Audit (Locked)
-              </button>
-              <p className="text-xs text-muted-foreground">Upgrade required to run a new audit.</p>
-            </div>
-
-            {/* Close button after success */}
-            <button type="button" className="btn-secondary w-full" onClick={handleClose}>
-              Close
+            <button type="button" className="btn-primary w-full" onClick={handleClose}>
+              View Full Report
             </button>
           </div>
         )}

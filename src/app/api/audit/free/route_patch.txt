@@ -1,0 +1,35 @@
+  // DEMO MODE: Use random issue selection instead of AI
+  const demoResult = generateFreeAuditResult(resolvedPageType, hasEarlyAccessProIssues);
+  result = convertDemoResultToFreeResult(demoResult);
+  modelUsed = 'demo-random-selection';
+  latencyMs = Math.floor(Math.random() * 200) + 100; // Simulated latency 100-300ms
+
+  /* COMMENTED OUT: Original Gemini AI call
+  try {
+    const gemini = await requestGeminiContent({
+      systemPrompt: systemPromptFree,
+      userPrompt: prompt,
+      imageBase64: buffer.toString('base64'),
+      imageType: payload.imageType
+    });
+
+    modelUsed = gemini.modelUsed;
+    latencyMs = gemini.latencyMs;
+
+    const validated = validateFreeAnalysis(gemini.text, resolvedPageType);
+    if (!validated.success) {
+      console.warn('[audit/free] validation failed', validated.error);
+      result = buildFreeFallback('l1', resolvedPageType);
+    } else {
+      result = { analysis_state: 'full', ...validated.data };
+    }
+  } catch (error) {
+    if (error instanceof GeminiOutputError) {
+      result = buildFreeFallback('l1', resolvedPageType);
+    } else if (error instanceof GeminiTimeoutError || error instanceof GeminiRequestError) {
+      result = buildFreeFallback('l2', resolvedPageType);
+    } else {
+      result = buildFreeFallback('l3', resolvedPageType);
+    }
+  }
+  */

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ThemeSwitcher from '@/presentation/components/ThemeSwitcher';
 import LockedSection from '@/presentation/components/LockedSection';
+import EarlyAccessModal from '@/presentation/components/EarlyAccessModal';
 import type { ApiResponse } from '@/shared/types/api';
 import type { FreeAuditResult, ProAuditResult, PageType } from '@/domain/types/uxray';
 import { buildFreeFallback, buildProFallback } from '@/domain/validators/uxray';
@@ -13,7 +14,9 @@ import { logClientEvent } from '@/infrastructure/analytics/client';
 import {
   getAuditUnlockId,
   hasEarlyAccess as readEarlyAccess,
-  hasFullAccess as readFullAccess
+  hasFullAccess as readFullAccess,
+  getAccessState,
+  decrementAttemptOnSuccess
 } from '@/infrastructure/storage/unlockStorage';
 
 const pageTypes: Array<{ value: PageType; label: string }> = [
@@ -78,6 +81,8 @@ export default function AuditPageClient() {
   const [upgradeNotice, setUpgradeNotice] = useState<string | null>(null);
   const [hasEarlyAccess, setHasEarlyAccess] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
+  const [earlyAccessRemainingAttempts, setEarlyAccessRemainingAttempts] = useState(0);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
   const freeInsightRef = useRef<HTMLDivElement | null>(null);
 
   const resetAuditForm = useCallback(() => {
@@ -148,6 +153,8 @@ export default function AuditPageClient() {
   useEffect(() => {
     setHasEarlyAccess(readEarlyAccess());
     setHasFullAccess(readFullAccess());
+    const accessState = getAccessState();
+    setEarlyAccessRemainingAttempts(accessState.early_access_remaining_attempts);
   }, []);
 
   useEffect(() => {
@@ -238,9 +245,20 @@ export default function AuditPageClient() {
     setError(null);
     setUpgradeNotice(null);
 
-    if (hasEarlyAccess && !hasFullAccess) {
-      setUpgradeNotice('Upgrade required to run a new audit.');
-      return;
+    // Get current access state
+    const accessState = getAccessState();
+
+    // Check if early access attempts are exhausted
+    if (accessState.mode === 'early_access' && accessState.early_access_remaining_attempts === 0) {
+      setUpgradeNotice('Early access attempts used up. You are back to free mode.');
+      setHasEarlyAccess(false);
+      setEarlyAccessRemainingAttempts(0);
+    }
+
+    if (hasFullAccess) {
+      // Full access users shouldn't be blocked
+    } else if (hasEarlyAccess && accessState.early_access_remaining_attempts === 0) {
+      setUpgradeNotice('Your early access attempts have been used. You are now using the free tier.');
     }
 
     if (!pageType) {
@@ -277,12 +295,21 @@ export default function AuditPageClient() {
     try {
       let response: Response;
 
+      // Get early access unlock ID if available
+      const currentAccessState = getAccessState();
+      const earlyAccessUnlockId = currentAccessState.mode === 'early_access' && currentAccessState.early_access_remaining_attempts > 0
+        ? currentAccessState.audit_unlock_id
+        : undefined;
+
       if (inputMode === 'image') {
         const formData = new FormData();
         formData.append('image', file as File);
         formData.append('page_type', pageType);
         if (trimmedContext) {
           formData.append('optional_context', trimmedContext);
+        }
+        if (earlyAccessUnlockId) {
+          formData.append('early_access_unlock_id', earlyAccessUnlockId);
         }
 
         response = await fetch('/api/audit/free', {
@@ -297,7 +324,8 @@ export default function AuditPageClient() {
           body: JSON.stringify({
             url: trimmedUrl,
             page_type: pageType,
-            optional_context: trimmedContext || undefined
+            optional_context: trimmedContext || undefined,
+            early_access_unlock_id: earlyAccessUnlockId
           })
         });
       }
@@ -316,6 +344,13 @@ export default function AuditPageClient() {
         setPageType(payload.data.page_type);
       }
       setPreviewUrl(payload.data.image_url || null);
+
+      // Decrement attempt on successful audit (only if early access was used)
+      if (earlyAccessUnlockId) {
+        const updatedState = decrementAttemptOnSuccess();
+        setEarlyAccessRemainingAttempts(updatedState.early_access_remaining_attempts);
+        setHasEarlyAccess(updatedState.mode === 'early_access');
+      }
     } catch (err) {
       console.error(err);
       const fallback = buildFreeFallback('l3', pageType || 'landing');
@@ -332,6 +367,21 @@ export default function AuditPageClient() {
     router.push('/audit');
   };
 
+  const handleUnlockSuccess = useCallback((unlockId: string) => {
+    // Update access state
+    setHasEarlyAccess(true);
+    const accessState = getAccessState();
+    setEarlyAccessRemainingAttempts(accessState.early_access_remaining_attempts);
+
+    // Fetch full report with the new unlock ID
+    if (auditId) {
+      fetchFullReport(auditId, unlockId);
+    }
+
+    // Close modal
+    setShowUnlockModal(false);
+  }, [auditId, fetchFullReport]);
+
   const scoreDisplay = useMemo(() => {
     if (!freeResult) return null;
     return freeResult.ux_score;
@@ -339,6 +389,13 @@ export default function AuditPageClient() {
 
   return (
     <div className="relative">
+      {showUnlockModal && (
+        <EarlyAccessModal
+          auditId={auditId}
+          onClose={() => setShowUnlockModal(false)}
+          onUnlockSuccess={handleUnlockSuccess}
+        />
+      )}
       <main className="mx-auto min-h-screen max-w-6xl px-6 pb-20 pt-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -485,6 +542,12 @@ export default function AuditPageClient() {
               <p className="text-xs text-muted-foreground">Estimasi 10-30 detik.</p>
             </div>
 
+            {hasEarlyAccess && !hasFullAccess && earlyAccessRemainingAttempts > 0 && (
+              <div className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">
+                <span className="font-semibold">Early Access:</span> {earlyAccessRemainingAttempts} audit{earlyAccessRemainingAttempts !== 1 ? 's' : ''} remaining (Pro issues included)
+              </div>
+            )}
+
             {loading && (
               <div className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -575,21 +638,26 @@ export default function AuditPageClient() {
               </div>
             </div>
 
-            {freeInsightCompleted && !proResult && (
+            {freeInsightCompleted && !proResult && !loadingPro && (
               <LockedSection
                 onUnlockClick={() => {
                   logClientEvent('unlock_cta_clicked', { audit_id: auditId });
-                  const href = auditId ? `/unlock?auditId=${auditId}` : '/unlock';
-                  router.push(href);
+                  setShowUnlockModal(true);
                 }}
               />
             )}
 
             {loadingPro && (
-              <div className="card p-6 animate-pulse">
-                <div className="h-4 w-32 rounded bg-surface-2" />
-                <div className="mt-4 h-4 w-full rounded bg-surface-2" />
-                <div className="mt-2 h-4 w-[85%] rounded bg-surface-2" />
+              <div className="card p-6">
+                <div className="flex items-center gap-3">
+                  <span className="h-3 w-3 rounded-full bg-primary animate-pulse" />
+                  <span className="text-sm text-muted-foreground">Running deeper analysis on your screenshot...</span>
+                </div>
+                <div className="mt-4 space-y-2 animate-pulse">
+                  <div className="h-4 w-full rounded bg-surface-2" />
+                  <div className="h-4 w-[92%] rounded bg-surface-2" />
+                  <div className="h-4 w-[85%] rounded bg-surface-2" />
+                </div>
               </div>
             )}
 

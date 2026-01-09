@@ -3,10 +3,11 @@ import type { PageType } from '@/domain/types/uxray';
 
 type PromptParams = {
   pageType: PageType;
+  includePaidIssues?: boolean;
 };
 
-const renderIssuePool = (pageType: PageType) => {
-  const allowed = getAllowedIssues(pageType);
+const renderIssuePool = (pageType: PageType, includePaidIssues: boolean = false) => {
+  const allowed = getAllowedIssues(pageType, includePaidIssues);
   const lines = allowed.map(
     (issue) => `- [${issue.id}] ${issue.title} — ${issue.category} — severity: ${issue.severity}`
   );
@@ -19,8 +20,8 @@ Do not teach UX theory.
 Do not mention AI.
 Be specific, simple, and practical.`;
 
-export const userPromptFree = ({ pageType }: PromptParams) => {
-  const pool = renderIssuePool(pageType);
+export const userPromptFree = ({ pageType, includePaidIssues = false }: PromptParams) => {
+  const pool = renderIssuePool(pageType, includePaidIssues);
   return `You are given a screenshot of a digital interface.
 
 From the UX Issue Pool (Allowed Issues for this pageType) below, select the TOP 2–3 issues that are most likely present.
@@ -67,8 +68,8 @@ You focus on:
 
 Your tone is sharp, clear, and helpful — like a senior UX consultant.`;
 
-export const userPromptPro = ({ pageType }: PromptParams) => {
-  const pool = renderIssuePool(pageType);
+export const userPromptPro = ({ pageType, includePaidIssues = true }: PromptParams) => {
+  const pool = renderIssuePool(pageType, includePaidIssues);
   return `You are given a screenshot of a digital interface (landing page, dashboard, or app).
 
 Step 1 — Identify Issues
