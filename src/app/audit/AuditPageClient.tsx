@@ -608,7 +608,7 @@ export default function AuditPageClient() {
 
         {freeResult && (
           <section className="mt-12 space-y-8">
-            <div className="card grid gap-6 p-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="card grid gap-8 p-6">
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">Page Score</p>
                 <div className="text-5xl font-semibold text-foreground">{scoreDisplay}</div>
