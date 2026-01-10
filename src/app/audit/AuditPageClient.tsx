@@ -401,17 +401,19 @@ export default function AuditPageClient() {
       )}
       <main className="mx-auto min-h-screen max-w-6xl px-6 pb-20 pt-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXRay</p>
-            <h1 className="text-3xl font-semibold text-foreground">Audit Page</h1>
-          </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-subtle">UXRay</p>
+              <h1 className="text-3xl font-semibold text-foreground">Audit Page</h1>
+            </div>
             <AuditHeaderStatus
               hasEarlyAccess={hasEarlyAccess}
               hasFullAccess={hasFullAccess}
               earlyAccessRemainingAttempts={earlyAccessRemainingAttempts}
               isLoading={!accessLoaded}
             />
+          </div>
+          <div className="flex items-center gap-3">
             <ThemeSwitcher />
             <Link href="/" className="btn-secondary">
               Kembali ke Home
