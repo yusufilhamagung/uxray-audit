@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import ThemeSwitcher from '@/presentation/components/ThemeSwitcher';
 import LockedSection from '@/presentation/components/LockedSection';
 import EarlyAccessModal from '@/presentation/components/EarlyAccessModal';
+import { AuditHeaderStatus } from '@/presentation/components/AuditHeaderStatus';
 import type { ApiResponse } from '@/shared/types/api';
 import type { FreeAuditResult, ProAuditResult, PageType } from '@/domain/types/uxray';
 import { buildFreeFallback, buildProFallback } from '@/domain/validators/uxray';
@@ -83,6 +84,7 @@ export default function AuditPageClient() {
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [earlyAccessRemainingAttempts, setEarlyAccessRemainingAttempts] = useState(0);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [accessLoaded, setAccessLoaded] = useState(false);
   const freeInsightRef = useRef<HTMLDivElement | null>(null);
 
   const resetAuditForm = useCallback(() => {
@@ -155,6 +157,7 @@ export default function AuditPageClient() {
     setHasFullAccess(readFullAccess());
     const accessState = getAccessState();
     setEarlyAccessRemainingAttempts(accessState.early_access_remaining_attempts);
+    setAccessLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -403,6 +406,12 @@ export default function AuditPageClient() {
             <h1 className="text-3xl font-semibold text-foreground">Audit Page</h1>
           </div>
           <div className="flex items-center gap-3">
+            <AuditHeaderStatus
+              hasEarlyAccess={hasEarlyAccess}
+              hasFullAccess={hasFullAccess}
+              earlyAccessRemainingAttempts={earlyAccessRemainingAttempts}
+              isLoading={!accessLoaded}
+            />
             <ThemeSwitcher />
             <Link href="/" className="btn-secondary">
               Kembali ke Home
